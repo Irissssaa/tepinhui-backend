@@ -1,0 +1,84 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+      - dev-njmd
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      JAVA_VERSION: ${{ vars.JAVA_VERSION || '17' }}
+      SERVER_HOST: ${{ vars.SERVER_HOST }}
+      SERVER_USER: ${{ vars.SERVER_USER }}
+      SERVER_PORT: ${{ vars.SERVER_PORT || '22' }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/tph' }}
+      REPO_URL: ${{ vars.REPO_URL }}
+      APP_ENV_FILE: ${{ vars.APP_ENV_FILE || '/home/tph/shared/app.env' }}
+      DEPLOY_BRANCH: ${{ github.ref_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Verify build
+        run: |
+          chmod +x mvnw
+          ./mvnw -B test
+
+      - name: Validate deploy variables
+        run: |
+          : "${SERVER_HOST:?SERVER_HOST is required}"
+          : "${SERVER_USER:?SERVER_USER is required}"
+          : "${REPO_URL:?REPO_URL is required}"
+
+      - name: Prepare SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # 写入部署专用密钥
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          # 获取服务器主机密钥
+          ssh-keyscan -p "${SERVER_PORT}" "${SERVER_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # 配置 SSH 使用部署密钥
+          cat >> ~/.ssh/config << EOF
+          Host ${SERVER_HOST}
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking no
+            UserKnownHostsFile ~/.ssh/known_hosts
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Ensure deploy path exists
+        run: |
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            "mkdir -p '${DEPLOY_PATH}/.github-deploy'"
+
+      - name: Upload deploy script
+        run: |
+          scp -P "${SERVER_PORT}" deploy/deploy.sh \
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/.github-deploy/deploy.sh"
+
+      - name: Run remote deploy
+        run: |
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" "\
+            chmod +x '${DEPLOY_PATH}/.github-deploy/deploy.sh' && \
+            REPO_URL='${REPO_URL}' \
+            DEPLOY_BRANCH='${DEPLOY_BRANCH}' \
+            DEPLOY_PATH='${DEPLOY_PATH}' \
+            APP_ENV_FILE='${APP_ENV_FILE}' \
+            '${DEPLOY_PATH}/.github-deploy/deploy.sh'"
