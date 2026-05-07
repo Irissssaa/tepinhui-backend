@@ -17,7 +17,7 @@ jobs:
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/tph' }}
       REPO_URL: ${{ vars.REPO_URL }}
       APP_ENV_FILE: ${{ vars.APP_ENV_FILE || '/home/tph/shared/app.env' }}
-      DEPLOY_BRANCH: ${{ vars.DEPLOY_BRANCH || 'main' }}
+      DEPLOY_BRANCH: ${{ github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
