@@ -101,19 +101,25 @@ require_command git
 require_command java
 require_command curl
 
+# 配置 Git 禁用 SSL 验证（解决 TLS 连接问题）
+export GIT_SSL_NO_VERIFY=true
+
 mkdir -p "${DEPLOY_PATH}" "${CURRENT_DIR}" "${LOG_DIR}" "${RUN_DIR}" "${DEPLOY_PATH}/shared"
 
 if [[ ! -d "${REPO_DIR}/.git" ]]; then
   log "cloning repository ${REPO_URL} to ${REPO_DIR}"
-  git clone --branch "${DEPLOY_BRANCH}" "${REPO_URL}" "${REPO_DIR}"
+  git -c url."https://gh-proxy.org/https://github.com/".insteadOf="https://github.com/" \
+    clone --branch "${DEPLOY_BRANCH}" "${REPO_URL}" "${REPO_DIR}"
 fi
 
 cd "${REPO_DIR}"
 
 log "syncing branch ${DEPLOY_BRANCH}"
-git fetch --all --prune
+git -c url."https://gh-proxy.org/https://github.com/".insteadOf="https://github.com/" \
+  fetch --all --prune
 git checkout "${DEPLOY_BRANCH}"
-git pull --ff-only origin "${DEPLOY_BRANCH}"
+git -c url."https://gh-proxy.org/https://github.com/".insteadOf="https://github.com/" \
+  pull --ff-only origin "${DEPLOY_BRANCH}"
 
 if [[ -f "${APP_ENV_FILE}" ]]; then
   log "loading application env from ${APP_ENV_FILE}"
