@@ -2,6 +2,7 @@ package com.tepinhui.tepinhui_backend.config;
 
 import com.tepinhui.tepinhui_backend.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -27,6 +28,11 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    // 健康检查端点路径（相对于 context-path）
+    // 例如: 当 context-path=/tph 时，实际路径为 /tph/health
+    @Value("${app.health-endpoint:/health}")
+    private String healthEndpoint;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -35,12 +41,13 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/auth/login",
-                    "/auth/register",
-                    "/auth/refresh",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui.html"
+                    "/auth/login",      // 用户登录
+                    "/auth/register",   // 用户注册
+                    "/auth/refresh",    // 刷新 Token
+                    healthEndpoint,     // 健康检查（实际路径: ${context-path}${health-endpoint}）
+                    "/swagger-ui/**",   // Swagger UI
+                    "/v3/api-docs/**",  // API 文档
+                    "/swagger-ui.html"  // Swagger 入口
                 ).permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/merchant/**").hasAnyRole("ADMIN", "MERCHANT")
