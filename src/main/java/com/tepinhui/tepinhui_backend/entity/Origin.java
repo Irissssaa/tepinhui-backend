@@ -2,7 +2,6 @@ package com.tepinhui.tepinhui_backend.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
-import java.time.LocalDateTime;
 
 @Data
 @TableName("origin")
