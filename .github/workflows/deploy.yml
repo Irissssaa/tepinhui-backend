@@ -11,35 +11,31 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      JAVA_VERSION: ${{ vars.JAVA_VERSION || '17' }}
       SERVER_HOST: ${{ vars.SERVER_HOST }}
       SERVER_USER: ${{ vars.SERVER_USER }}
       SERVER_PORT: ${{ vars.SERVER_PORT || '222' }}
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/tph' }}
-      REPO_URL: ${{ vars.REPO_URL }}
       APP_ENV_FILE: ${{ vars.APP_ENV_FILE || '/home/tph/shared/app.env' }}
+      JAVA_VERSION: ${{ vars.JAVA_VERSION || '17' }}
       DEPLOY_BRANCH: ${{ github.ref_name }}
+      VERSION: ""  # 将在步骤中填充
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
-          cache: maven
-
-      - name: Verify build
-        run: |
-          chmod +x mvnw
-          ./mvnw -B test
-
       - name: Validate deploy variables
         run: |
           : "${SERVER_HOST:?SERVER_HOST is required}"
           : "${SERVER_USER:?SERVER_USER is required}"
-          : "${REPO_URL:?REPO_URL is required}"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate version info
+        id: version
+        run: |
+          VERSION=$(date +%Y%m%d)-$(echo ${{ github.sha }} | cut -c1-7)
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "Built version: ${VERSION}"
 
       - name: Prepare SSH key
         env:
@@ -55,31 +51,62 @@ jobs:
           # 获取服务器主机密钥
           ssh-keyscan -p "${SERVER_PORT}" "${SERVER_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          # 配置 SSH 使用部署密钥
-          cat >> ~/.ssh/config << EOF
+          # 配置 SSH（包含端口配置）
+          cat > ~/.ssh/config << EOF
           Host ${SERVER_HOST}
+            Port ${SERVER_PORT}
             IdentityFile ~/.ssh/id_ed25519
-            StrictHostKeyChecking no
+            StrictHostKeyChecking yes
             UserKnownHostsFile ~/.ssh/known_hosts
           EOF
           chmod 600 ~/.ssh/config
 
-      - name: Ensure deploy path exists
+          # 测试 SSH 连接
+          ssh -o ConnectTimeout=10 "${SERVER_USER}@${SERVER_HOST}" "echo 'SSH connection successful'" || {
+            echo "ERROR: Cannot establish SSH connection to ${SERVER_HOST}:${SERVER_PORT}"
+            exit 1
+          }
+
+      - name: Create source package
         run: |
+          # 使用 git archive 只打包提交的代码（不含 .git 目录）
+          git archive HEAD -o source-code.tar.gz
+
+          # 显示包大小
+          echo "Source package created:"
+          ls -lh source-code.tar.gz
+          echo "Package contains $(tar tzf source-code.tar.gz | wc -l) files"
+
+      - name: Deploy to server
+        run: |
+          # 使用 SSH 配置（通过 ~/.ssh/config 中的端口）
+          set -e
+
+          echo "Creating version directory on server..."
           ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            "mkdir -p '${DEPLOY_PATH}/.github-deploy'"
+            "mkdir -p '${DEPLOY_PATH}/versions/${VERSION}' '${DEPLOY_PATH}/shared'"
 
-      - name: Upload deploy script
-        run: |
+          echo "Uploading source code package..."
+          scp -P "${SERVER_PORT}" source-code.tar.gz \
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/versions/${VERSION}/"
+
+          echo "Verifying upload..."
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            "ls -lh '${DEPLOY_PATH}/versions/${VERSION}/source-code.tar.gz'"
+
+          echo "Updating latest symlink..."
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            "ln -sfn '${DEPLOY_PATH}/versions/${VERSION}' '${DEPLOY_PATH}/versions/latest'"
+
+          echo "Uploading deployment script..."
           scp -P "${SERVER_PORT}" deploy/deploy.sh \
-            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/.github-deploy/deploy.sh"
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/deploy.sh"
 
-      - name: Run remote deploy
-        run: |
+          echo "Running deployment script..."
           ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" "\
-            chmod +x '${DEPLOY_PATH}/.github-deploy/deploy.sh' && \
-            REPO_URL='${REPO_URL}' \
-            DEPLOY_BRANCH='${DEPLOY_BRANCH}' \
+            chmod +x '${DEPLOY_PATH}/deploy.sh' && \
             DEPLOY_PATH='${DEPLOY_PATH}' \
             APP_ENV_FILE='${APP_ENV_FILE}' \
-            '${DEPLOY_PATH}/.github-deploy/deploy.sh'"
+            VERSION='${VERSION}' \
+            JAVA_VERSION='${JAVA_VERSION}' \
+            '${DEPLOY_PATH}/deploy.sh'"

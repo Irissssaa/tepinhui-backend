@@ -1,0 +1,17 @@
+[Unit]
+Description=Tepinhui Backend Application
+After=network.target
+
+[Service]
+Type=simple
+User=tph
+WorkingDirectory=/home/tph/versions/latest
+EnvironmentFile=/home/tph/shared/app.env
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /home/tph/versions/latest/app.jar
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
