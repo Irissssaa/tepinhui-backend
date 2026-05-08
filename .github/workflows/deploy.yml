@@ -13,7 +13,7 @@ jobs:
       JAVA_VERSION: ${{ vars.JAVA_VERSION || '17' }}
       SERVER_HOST: ${{ vars.SERVER_HOST }}
       SERVER_USER: ${{ vars.SERVER_USER }}
-      SERVER_PORT: ${{ vars.SERVER_PORT || '22' }}
+      SERVER_PORT: ${{ vars.SERVER_PORT || '222' }}
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/tph' }}
       REPO_URL: ${{ vars.REPO_URL }}
       APP_ENV_FILE: ${{ vars.APP_ENV_FILE || '/home/tph/shared/app.env' }}
