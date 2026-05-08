@@ -48,6 +48,7 @@ public class HealthController {
         payload.put("application", applicationName);
         payload.put("timestamp", formatToChinaTime(Instant.now()));
         payload.put("startup-time", formatToChinaTime(startupTime));
+        payload.put("branch", getGitBranch());
         payload.put("port", serverPort);
         payload.put("context-path", apiPrefix);
         payload.put("health-path", apiPrefix + healthEndpoint);
@@ -59,4 +60,14 @@ public class HealthController {
         return zonedDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss Z"));
     }
 
+    private String getGitBranch() {
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{"git", "rev-parse", "--abbrev-ref", "HEAD"});
+            process.waitFor();
+            byte[] bytes = process.getInputStream().readAllBytes();
+            return new String(bytes).trim();
+        } catch (Exception e) {
+            return "unknown";
+        }
+    }
 }
