@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/tph/api/v1/trace")
+@RequestMapping("/api/v1/trace")
 @RequiredArgsConstructor
 @Tag(name = "溯源模块", description = "溯源码录入、查询、审核")
 public class TraceController {
