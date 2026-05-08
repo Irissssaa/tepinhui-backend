@@ -4,33 +4,28 @@ set -euo pipefail
 
 # 应用配置
 APP_NAME="${APP_NAME:-tepinhui-backend}"
-REPO_URL="${REPO_URL:?REPO_URL is required}"
-DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 DEPLOY_PATH="${DEPLOY_PATH:-/home/tph}"
+VERSION="${VERSION:-$(date +%Y%m%d-%H%M%S)}"
 
 # 服务配置
 APP_PORT="${APP_PORT:-8060}"
-# API 前缀：所有 REST 端点的 URL 都会加上此前缀
-# 例如: /tph/auth/login, /tph/products
 APP_API_PREFIX="${APP_API_PREFIX:-/tph}"
-# 健康检查端点路径（相对于 API 前缀）
-# 实际健康检查 URL: http://127.0.0.1:${APP_PORT}${APP_API_PREFIX}${APP_HEALTH_ENDPOINT}
 APP_HEALTH_ENDPOINT="${APP_HEALTH_ENDPOINT:-/health}"
-
-# 部署配置
-STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-120}"
 HEALTH_CHECK_INTERVAL="${HEALTH_CHECK_INTERVAL:-5}"
+STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-120}"
 JAVA_OPTS="${JAVA_OPTS:--Xms256m -Xmx512m}"
-MVN_BUILD_ARGS="${MVN_BUILD_ARGS:-clean package -DskipTests}"
 APP_ENV_FILE="${APP_ENV_FILE:-${DEPLOY_PATH}/shared/app.env}"
 
-REPO_DIR="${DEPLOY_PATH}/repo"
-CURRENT_DIR="${DEPLOY_PATH}/current"
+# 路径配置
+VERSIONS_DIR="${DEPLOY_PATH}/versions"
+LATEST_VERSION="${VERSIONS_DIR}/latest"
+JAR_FILE="${LATEST_VERSION}/app.jar"
 LOG_DIR="${DEPLOY_PATH}/logs"
-RUN_DIR="${DEPLOY_PATH}/run"
-PID_FILE="${RUN_DIR}/${APP_NAME}.pid"
-JAR_FILE="${CURRENT_DIR}/${APP_NAME}.jar"
 LOG_FILE="${LOG_DIR}/${APP_NAME}.log"
+MAX_VERSIONS="${MAX_VERSIONS:-5}"
+
+# systemd 服务名称
+SERVICE_NAME="${APP_NAME}"
 
 normalize_path() {
   local value="$1"
@@ -52,125 +47,228 @@ log() {
   printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
 }
 
-require_command() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    log "missing required command: $1"
-    exit 1
+error() {
+  log "ERROR: $*" >&2
+  exit 1
+}
+
+# 检查必要命令
+check_commands() {
+  for cmd in systemctl; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      error "Missing required command: $cmd"
+    fi
+  done
+}
+
+# 创建 systemd 服务单元
+create_service_unit() {
+  local service_file="/etc/systemd/system/${SERVICE_NAME}.service"
+
+  log "Creating systemd service unit: ${service_file}"
+  sudo tee "${service_file}" >/dev/null <<EOF
+[Unit]
+Description=Tepinhui Backend Application
+After=network.target
+
+[Service]
+Type=simple
+User=tph
+WorkingDirectory=${LATEST_VERSION}
+EnvironmentFile=${APP_ENV_FILE}
+ExecStart=/usr/bin/java ${JAVA_OPTS} -jar ${JAR_FILE}
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  sudo systemctl daemon-reload
+}
+
+# 停止现有服务
+stop_service() {
+  if sudo systemctl is-active "${SERVICE_NAME}" >/dev/null 2>&1; then
+    log "Stopping existing service: ${SERVICE_NAME}"
+    sudo systemctl stop "${SERVICE_NAME}"
+    sleep 3
   fi
 }
 
-wait_for_exit() {
-  local pid="$1"
+# 启动服务
+start_service() {
+  log "Starting service: ${SERVICE_NAME}"
+  sudo systemctl start "${SERVICE_NAME}"
 
-  for _ in $(seq 1 30); do
-    if ! kill -0 "${pid}" >/dev/null 2>&1; then
+  log "Waiting for service to become healthy..."
+  sleep 5
+}
+
+# 健康检查
+health_check() {
+  local elapsed=0
+
+  while (( elapsed < STARTUP_TIMEOUT )); do
+    if curl --silent --show-error --fail "${HEALTH_URL}" >/dev/null; then
+      log "Service is healthy and ready"
       return 0
     fi
-    sleep 1
+
+    if ! sudo systemctl is-active "${SERVICE_NAME}" >/dev/null 2>&1; then
+      log "Service exited unexpectedly. Checking logs..."
+      sudo journalctl -u "${SERVICE_NAME}" --no-pager -n 100
+      return 1
+    fi
+
+    sleep "${HEALTH_CHECK_INTERVAL}"
+    elapsed=$((elapsed + HEALTH_CHECK_INTERVAL))
   done
 
-  kill -9 "${pid}" >/dev/null 2>&1 || true
+  log "Health check timed out after ${STARTUP_TIMEOUT}s"
+  sudo journalctl -u "${SERVICE_NAME}" --no-pager -n 100
+  return 1
 }
 
-stop_existing_app() {
-  if [[ -f "${PID_FILE}" ]]; then
-    local pid
-    pid="$(cat "${PID_FILE}")"
-    if [[ -n "${pid}" ]] && kill -0 "${pid}" >/dev/null 2>&1; then
-      log "stopping existing process ${pid}"
-      kill "${pid}" >/dev/null 2>&1 || true
-      wait_for_exit "${pid}"
+# 清理旧版本
+cleanup_old_versions() {
+  log "Cleaning up old versions (keeping ${MAX_VERSIONS})"
+
+  local versions=()
+  for dir in "${VERSIONS_DIR}"/*; do
+    if [[ -d "$dir" && "$(basename "$dir")" != "latest" ]]; then
+      versions+=("$(basename "$dir")")
     fi
-    rm -f "${PID_FILE}"
-  fi
+  done
 
-  if pgrep -f "${JAR_FILE}" >/dev/null 2>&1; then
-    local matched_pid
-    matched_pid="$(pgrep -f "${JAR_FILE}" | head -n 1)"
-    log "stopping matched process ${matched_pid}"
-    kill "${matched_pid}" >/dev/null 2>&1 || true
-    wait_for_exit "${matched_pid}"
+  # 按版本号排序（最新的在前）
+  IFS=$'\n' sorted_versions=($(sort -r <<<"${versions[*]}"))
+  unset IFS
+
+  local count=${#sorted_versions[@]}
+  if (( count > MAX_VERSIONS )); then
+    for (( i=MAX_VERSIONS; i<count; i++ )); do
+      local old_version="${sorted_versions[$i]}"
+      log "Removing old version: ${old_version}"
+      rm -rf "${VERSIONS_DIR}/${old_version}"
+    done
   fi
 }
 
-find_built_jar() {
-  find target -maxdepth 1 -type f -name '*.jar' ! -name 'original-*.jar' | head -n 1
+# 显示状态信息
+show_status() {
+  log "========================================="
+  log "Deployment Status"
+  log "========================================="
+  log "Application: ${APP_NAME}"
+  log "Version: ${VERSION}"
+  log "Service: ${SERVICE_NAME}"
+  log "Status: $(sudo systemctl is-active "${SERVICE_NAME}" 2>/dev/null || echo 'unknown')"
+  log "Health URL: ${HEALTH_URL}"
+  log "========================================="
 }
 
-require_command git
-require_command java
-require_command curl
+# 主执行流程
+main() {
+  log "Starting deployment of version: ${VERSION}"
 
-# 配置 Git 禁用 SSL 验证（解决 TLS 连接问题）
-export GIT_SSL_NO_VERIFY=true
+  # 检查必要命令
+  check_commands
 
-mkdir -p "${DEPLOY_PATH}" "${CURRENT_DIR}" "${LOG_DIR}" "${RUN_DIR}" "${DEPLOY_PATH}/shared"
+  # 检查 JAR 文件
+  if [[ ! -f "${JAR_FILE}" ]]; then
+    error "JAR file not found: ${JAR_FILE}"
+  fi
 
-if [[ ! -d "${REPO_DIR}/.git" ]]; then
-  log "cloning repository ${REPO_URL} to ${REPO_DIR}"
-  git -c url."https://gh-proxy.org/https://github.com/".insteadOf="https://github.com/" \
-    clone --branch "${DEPLOY_BRANCH}" "${REPO_URL}" "${REPO_DIR}"
-fi
+  # 创建必要的目录
+  mkdir -p "${LOG_DIR}"
 
-cd "${REPO_DIR}"
+  # 创建 systemd 服务单元（如果不存在）
+  if [[ ! -f "/etc/systemd/system/${SERVICE_NAME}.service" ]]; then
+    create_service_unit
+  fi
 
-log "syncing branch ${DEPLOY_BRANCH}"
-git -c url."https://gh-proxy.org/https://github.com/".insteadOf="https://github.com/" \
-  fetch --all --prune
-git checkout "${DEPLOY_BRANCH}"
-git -c url."https://gh-proxy.org/https://github.com/".insteadOf="https://github.com/" \
-  pull --ff-only origin "${DEPLOY_BRANCH}"
+  # 加载环境变量
+  if [[ -f "${APP_ENV_FILE}" ]]; then
+    log "Loading application environment from ${APP_ENV_FILE}"
+    set -a
+    . "${APP_ENV_FILE}"
+    set +a
+  fi
 
-if [[ -f "${APP_ENV_FILE}" ]]; then
-  log "loading application env from ${APP_ENV_FILE}"
-  set -a
-  # shellcheck disable=SC1090
-  . "${APP_ENV_FILE}"
-  set +a
-fi
+  # 停止现有服务
+  stop_service
 
-chmod +x mvnw
+  # 启动服务
+  start_service
 
-log "building application"
-./mvnw -B ${MVN_BUILD_ARGS}
+  # 健康检查
+  if health_check; then
+    # 清理旧版本
+    cleanup_old_versions
 
-BUILT_JAR="$(find_built_jar)"
-if [[ -z "${BUILT_JAR}" ]]; then
-  log "jar file not found under ${REPO_DIR}/target"
-  exit 1
-fi
+    # 显示状态
+    show_status
 
-cp "${BUILT_JAR}" "${JAR_FILE}"
-
-stop_existing_app
-
-log "starting ${APP_NAME}"
-nohup java ${JAVA_OPTS} -jar "${JAR_FILE}" >> "${LOG_FILE}" 2>&1 &
-NEW_PID=$!
-echo "${NEW_PID}" > "${PID_FILE}"
-
-log "health checking ${HEALTH_URL}"
-elapsed=0
-while (( elapsed < STARTUP_TIMEOUT )); do
-  if curl --silent --show-error --fail "${HEALTH_URL}" >/dev/null; then
-    log "deployment succeeded, app is healthy"
+    log "Deployment completed successfully!"
     exit 0
+  else
+    error "Deployment failed - health check failed"
   fi
+}
 
-  if ! kill -0 "${NEW_PID}" >/dev/null 2>&1; then
-    log "application exited unexpectedly, see ${LOG_FILE}"
-    tail -n 100 "${LOG_FILE}" || true
-    rm -f "${PID_FILE}"
-    exit 1
-  fi
+# 显示帮助信息
+show_help() {
+  cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
 
-  sleep "${HEALTH_CHECK_INTERVAL}"
-  elapsed=$((elapsed + HEALTH_CHECK_INTERVAL))
+Deploy Tepinhui Backend application.
+
+Options:
+  -v, --version VERSION    Deployment version (default: auto-generated)
+  -p, --path PATH         Deployment path (default: /home/tph)
+  -s, --show-status       Show current service status
+  -h, --help              Show this help message
+
+Environment Variables:
+  APP_NAME                 Application name (default: tepinhui-backend)
+  APP_PORT                 Application port (default: 8060)
+  JAVA_OPTS                Java JVM options (default: -Xms256m -Xmx512m)
+  MAX_VERSIONS             Maximum number of versions to keep (default: 5)
+
+Examples:
+  $(basename "$0")                              # Deploy with auto version
+  $(basename "$0") --version 20260508-abc123    # Deploy specific version
+  $(basename "$0") --show-status                # Show service status
+EOF
+}
+
+# 解析命令行参数
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -v|--version)
+      VERSION="$2"
+      shift 2
+      ;;
+    -p|--path)
+      DEPLOY_PATH="$2"
+      VERSIONS_DIR="${DEPLOY_PATH}/versions"
+      LATEST_VERSION="${VERSIONS_DIR}/latest"
+      JAR_FILE="${LATEST_VERSION}/app.jar"
+      shift 2
+      ;;
+    -s|--show-status)
+      show_status
+      exit 0
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    *)
+      error "Unknown option: $1"
+      ;;
+  esac
 done
 
-log "health check timed out after ${STARTUP_TIMEOUT}s"
-kill "${NEW_PID}" >/dev/null 2>&1 || true
-wait_for_exit "${NEW_PID}"
-rm -f "${PID_FILE}"
-tail -n 100 "${LOG_FILE}" || true
-exit 1
+main

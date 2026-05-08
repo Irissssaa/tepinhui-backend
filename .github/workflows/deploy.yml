@@ -7,17 +7,10 @@ on:
       - dev-njmd
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     env:
       JAVA_VERSION: ${{ vars.JAVA_VERSION || '17' }}
-      SERVER_HOST: ${{ vars.SERVER_HOST }}
-      SERVER_USER: ${{ vars.SERVER_USER }}
-      SERVER_PORT: ${{ vars.SERVER_PORT || '22' }}
-      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/tph' }}
-      REPO_URL: ${{ vars.REPO_URL }}
-      APP_ENV_FILE: ${{ vars.APP_ENV_FILE || '/home/tph/shared/app.env' }}
-      DEPLOY_BRANCH: ${{ github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,16 +22,45 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
-      - name: Verify build
+      - name: Build application
         run: |
           chmod +x mvnw
-          ./mvnw -B test
+          ./mvnw -B clean package -DskipTests
 
+      - name: Generate version info
+        id: version
+        run: |
+          VERSION=$(date +%Y%m%d)-$(echo ${{ github.sha }} | cut -c1-7)
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Built version: ${VERSION}"
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar-${{ steps.version.outputs.VERSION }}
+          path: target/*.jar
+          retention-days: 5
+
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      SERVER_HOST: ${{ vars.SERVER_HOST }}
+      SERVER_USER: ${{ vars.SERVER_USER }}
+      SERVER_PORT: ${{ vars.SERVER_PORT || '22' }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/tph' }}
+      APP_ENV_FILE: ${{ vars.APP_ENV_FILE || '/home/tph/shared/app.env' }}
+      DEPLOY_BRANCH: ${{ github.ref_name }}
+      VERSION: ${{ needs.build.outputs.version }}
+
+    steps:
       - name: Validate deploy variables
         run: |
           : "${SERVER_HOST:?SERVER_HOST is required}"
           : "${SERVER_USER:?SERVER_USER is required}"
-          : "${REPO_URL:?REPO_URL is required}"
 
       - name: Prepare SSH key
         env:
@@ -54,31 +76,52 @@ jobs:
           # 获取服务器主机密钥
           ssh-keyscan -p "${SERVER_PORT}" "${SERVER_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          # 配置 SSH 使用部署密钥
-          cat >> ~/.ssh/config << EOF
+          # 配置 SSH
+          cat > ~/.ssh/config << EOF
           Host ${SERVER_HOST}
             IdentityFile ~/.ssh/id_ed25519
-            StrictHostKeyChecking no
+            StrictHostKeyChecking yes
             UserKnownHostsFile ~/.ssh/known_hosts
           EOF
           chmod 600 ~/.ssh/config
 
-      - name: Ensure deploy path exists
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-jar-${{ env.VERSION }}
+          path: ./target/
+
+      - name: Deploy to server
         run: |
+          # 检查 JAR 文件
+          JAR_FILES=$(find ./target -name "*.jar" -type f | wc -l)
+          if [[ "$JAR_FILES" -ne 1 ]]; then
+            echo "Error: Expected 1 JAR file, found $JAR_FILES"
+            find ./target -name "*.jar" -type f
+            exit 1
+          fi
+
+          JAR_PATH=$(find ./target -name "*.jar" -type f | head -n 1)
+
+          # 创建版本目录
           ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
-            "mkdir -p '${DEPLOY_PATH}/.github-deploy'"
+            "mkdir -p '${DEPLOY_PATH}/versions/${VERSION}' '${DEPLOY_PATH}/shared'"
 
-      - name: Upload deploy script
-        run: |
+          # 上传 JAR 文件
+          scp -P "${SERVER_PORT}" "${JAR_PATH}" \
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/versions/${VERSION}/app.jar"
+
+          # 更新 latest 软链接
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            "ln -sfn '${DEPLOY_PATH}/versions/${VERSION}' '${DEPLOY_PATH}/versions/latest'"
+
+          # 上传并执行部署脚本
           scp -P "${SERVER_PORT}" deploy/deploy.sh \
-            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/.github-deploy/deploy.sh"
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/deploy.sh"
 
-      - name: Run remote deploy
-        run: |
           ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" "\
-            chmod +x '${DEPLOY_PATH}/.github-deploy/deploy.sh' && \
-            REPO_URL='${REPO_URL}' \
-            DEPLOY_BRANCH='${DEPLOY_BRANCH}' \
+            chmod +x '${DEPLOY_PATH}/deploy.sh' && \
             DEPLOY_PATH='${DEPLOY_PATH}' \
             APP_ENV_FILE='${APP_ENV_FILE}' \
-            '${DEPLOY_PATH}/.github-deploy/deploy.sh'"
+            VERSION='${VERSION}' \
+            '${DEPLOY_PATH}/deploy.sh'"
