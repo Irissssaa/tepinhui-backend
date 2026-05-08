@@ -44,9 +44,10 @@ public class SecurityConfig {
                     "/auth/login",      // 用户登录
                     "/auth/register",   // 用户注册
                     "/auth/refresh",    // 刷新 Token
-                    healthEndpoint,     // 健康检查（实际路径: ${context-path}${health-endpoint}）
+                    healthEndpoint,     // 健康检查（相对于 context-path）
                     "/swagger-ui/**",   // Swagger UI
                     "/swagger-ui.html", // Swagger 入口
+                    "/swagger-ui/index.html", // Swagger index
                     "/v3/api-docs/**",  // SpringDoc 3.x API 文档
                     "/api-docs/**",     // SpringDoc 2.x API 文档
                     "/swagger-config/**"// Swagger 配置
