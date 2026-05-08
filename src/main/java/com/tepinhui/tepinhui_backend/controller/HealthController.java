@@ -1,6 +1,8 @@
 package com.tepinhui.tepinhui_backend.controller;
 
 import com.tepinhui.tepinhui_backend.common.Result;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Tag(name = "系统管理", description = "健康检查、系统监控")
 @RestController
 public class HealthController {
 
@@ -37,6 +40,7 @@ public class HealthController {
         startupTime = Instant.now();
     }
 
+    @Operation(summary = "健康检查", description = "检查应用运行状态和基本信息")
     @GetMapping("${app.health-endpoint:/health}")
     public Result<Map<String, Object>> health() {
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -44,7 +48,6 @@ public class HealthController {
         payload.put("application", applicationName);
         payload.put("timestamp", formatToChinaTime(Instant.now()));
         payload.put("startup-time", formatToChinaTime(startupTime));
-        payload.put("branch", getGitBranch());
         payload.put("port", serverPort);
         payload.put("context-path", apiPrefix);
         payload.put("health-path", apiPrefix + healthEndpoint);
@@ -56,14 +59,4 @@ public class HealthController {
         return zonedDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss Z"));
     }
 
-    private String getGitBranch() {
-        try {
-            Process process = Runtime.getRuntime().exec(new String[]{"git", "rev-parse", "--abbrev-ref", "HEAD"});
-            process.waitFor();
-            byte[] bytes = process.getInputStream().readAllBytes();
-            return new String(bytes).trim();
-        } catch (Exception e) {
-            return "unknown";
-        }
-    }
 }
