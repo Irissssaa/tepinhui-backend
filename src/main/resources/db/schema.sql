@@ -15,8 +15,8 @@ USE tepinhui;
 -- ============================================
 
 -- 1. 用户表
-DROP TABLE IF EXISTS `user`;
-CREATE TABLE `user` (
+-- DROP TABLE IF EXISTS `user`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `user` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '用户ID',
     `username` VARCHAR(50) NOT NULL COMMENT '用户名',
     `phone` VARCHAR(20) NOT NULL COMMENT '手机号',
@@ -35,8 +35,8 @@ CREATE TABLE `user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 2. 商家表
-DROP TABLE IF EXISTS `merchant`;
-CREATE TABLE `merchant` (
+-- DROP TABLE IF EXISTS `merchant`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `merchant` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '商家ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `shop_name` VARCHAR(100) DEFAULT NULL COMMENT '店铺名称',
@@ -51,8 +51,8 @@ CREATE TABLE `merchant` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商家表';
 
 -- 3. 产地表
-DROP TABLE IF EXISTS `origin`;
-CREATE TABLE `origin` (
+-- DROP TABLE IF EXISTS `origin`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `origin` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '产地ID',
     `province_name` VARCHAR(30) DEFAULT NULL COMMENT '省份名称',
     `city_name` VARCHAR(30) DEFAULT NULL COMMENT '城市名称',
@@ -65,8 +65,8 @@ CREATE TABLE `origin` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='产地表';
 
 -- 4. 特产表
-DROP TABLE IF EXISTS `specialty`;
-CREATE TABLE `specialty` (
+-- DROP TABLE IF EXISTS `specialty`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `specialty` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '特产ID',
     `origin_id` BIGINT NOT NULL COMMENT '产地ID',
     `name` VARCHAR(100) DEFAULT NULL COMMENT '特产名称',
@@ -83,8 +83,8 @@ CREATE TABLE `specialty` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='特产表';
 
 -- 5. 商品表
-DROP TABLE IF EXISTS `product`;
-CREATE TABLE `product` (
+-- DROP TABLE IF EXISTS `product`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `product` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '商品ID',
     `merchant_id` BIGINT NOT NULL COMMENT '商家ID',
     `specialty_id` BIGINT NOT NULL COMMENT '特产ID',
@@ -104,8 +104,8 @@ CREATE TABLE `product` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品表';
 
 -- 6. 订单表
-DROP TABLE IF EXISTS `orders`;
-CREATE TABLE `orders` (
+-- DROP TABLE IF EXISTS `orders`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `orders` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '订单ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `order_no` VARCHAR(32) NOT NULL COMMENT '订单号',
@@ -123,8 +123,8 @@ CREATE TABLE `orders` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单表';
 
 -- 7. 订单明细表
-DROP TABLE IF EXISTS `order_item`;
-CREATE TABLE `order_item` (
+-- DROP TABLE IF EXISTS `order_item`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `order_item` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '明细ID',
     `order_id` BIGINT NOT NULL COMMENT '订单ID',
     `product_id` BIGINT NOT NULL COMMENT '商品ID',
@@ -141,8 +141,8 @@ CREATE TABLE `order_item` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表';
 
 -- 8. 溯源记录表
-DROP TABLE IF EXISTS `trace_record`;
-CREATE TABLE `trace_record` (
+-- DROP TABLE IF EXISTS `trace_record`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `trace_record` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '溯源记录ID',
     `trace_code` VARCHAR(64) NOT NULL COMMENT '溯源码',
     `product_id` BIGINT NOT NULL COMMENT '商品ID',
@@ -179,8 +179,8 @@ CREATE TABLE `trace_record` (
 -- ============================================
 
 -- 9. 商品分类表 [新增]
-DROP TABLE IF EXISTS `category`;
-CREATE TABLE `category` (
+-- DROP TABLE IF EXISTS `category`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `category` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '分类ID',
     `parent_id` BIGINT DEFAULT 0 COMMENT '父分类ID',
     `name` VARCHAR(50) NOT NULL COMMENT '分类名称',
@@ -194,8 +194,8 @@ CREATE TABLE `category` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品分类表';
 
 -- 10. 收货地址表 [新增]
-DROP TABLE IF EXISTS `address`;
-CREATE TABLE `address` (
+-- DROP TABLE IF EXISTS `address`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `address` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '地址ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `consignee` VARCHAR(50) NOT NULL COMMENT '收货人',
@@ -213,8 +213,8 @@ CREATE TABLE `address` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='收货地址表';
 
 -- 11. 购物车表 [新增]
-DROP TABLE IF EXISTS `cart_item`;
-CREATE TABLE `cart_item` (
+-- DROP TABLE IF EXISTS `cart_item`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `cart_item` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '购物车ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `product_id` BIGINT NOT NULL COMMENT '商品ID',
@@ -229,8 +229,8 @@ CREATE TABLE `cart_item` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购物车表';
 
 -- 12. 商品评价表 [新增]
-DROP TABLE IF EXISTS `review`;
-CREATE TABLE `review` (
+-- DROP TABLE IF EXISTS `review`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `review` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '评价ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `product_id` BIGINT NOT NULL COMMENT '商品ID',
@@ -248,8 +248,8 @@ CREATE TABLE `review` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品评价表';
 
 -- 13. 特产文化内容表 [新增]
-DROP TABLE IF EXISTS `culture_content`;
-CREATE TABLE `culture_content` (
+-- DROP TABLE IF EXISTS `culture_content`;  -- 注释掉以保护现有数据
+CREATE TABLE IF NOT EXISTS `culture_content` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '内容ID',
     `specialty_id` BIGINT NOT NULL COMMENT '特产ID',
     `title` VARCHAR(100) NOT NULL COMMENT '标题',
