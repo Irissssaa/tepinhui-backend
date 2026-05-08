@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - dev-njmd
-      - dev-zyx
 
 jobs:
   deploy:
