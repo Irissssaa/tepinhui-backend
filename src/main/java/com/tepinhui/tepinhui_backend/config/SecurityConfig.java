@@ -46,8 +46,10 @@ public class SecurityConfig {
                     "/auth/refresh",    // 刷新 Token
                     healthEndpoint,     // 健康检查（实际路径: ${context-path}${health-endpoint}）
                     "/swagger-ui/**",   // Swagger UI
-                    "/v3/api-docs/**",  // API 文档
-                    "/swagger-ui.html"  // Swagger 入口
+                    "/swagger-ui.html", // Swagger 入口
+                    "/v3/api-docs/**",  // SpringDoc 3.x API 文档
+                    "/api-docs/**",     // SpringDoc 2.x API 文档
+                    "/swagger-config/**"// Swagger 配置
                 ).permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/merchant/**").hasAnyRole("ADMIN", "MERCHANT")
