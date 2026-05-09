@@ -98,9 +98,23 @@ jobs:
           ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
             "ln -sfn '${DEPLOY_PATH}/versions/${VERSION}' '${DEPLOY_PATH}/versions/latest'"
 
-          echo "Uploading deployment script..."
+          echo "Uploading deployment scripts..."
           scp -P "${SERVER_PORT}" deploy/deploy.sh \
             "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/deploy.sh"
+
+          # 创建 scripts 目录并上传回退脚本和 wrapper
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            "mkdir -p '${DEPLOY_PATH}/scripts'"
+
+          scp -P "${SERVER_PORT}" deploy/rollback-on-failure.sh \
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/scripts/"
+
+          scp -P "${SERVER_PORT}" deploy/run-rollback.sh \
+            "${SERVER_USER}@${SERVER_HOST}:${DEPLOY_PATH}/scripts/"
+
+          echo "Setting script permissions..."
+          ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" \
+            "chmod +x '${DEPLOY_PATH}/scripts/rollback-on-failure.sh' '${DEPLOY_PATH}/scripts/run-rollback.sh'"
 
           echo "Running deployment script..."
           ssh -p "${SERVER_PORT}" "${SERVER_USER}@${SERVER_HOST}" "\
