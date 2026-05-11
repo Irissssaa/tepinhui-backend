@@ -3,6 +3,9 @@ package com.tepinhui.tepinhui_backend.controller;
 import com.tepinhui.tepinhui_backend.common.Role;
 import com.tepinhui.tepinhui_backend.common.UserStatus;
 import com.tepinhui.tepinhui_backend.entity.User;
+import com.tepinhui.tepinhui_backend.mapper.MerchantMapper;
+import com.tepinhui.tepinhui_backend.mapper.ProductMapper;
+import com.tepinhui.tepinhui_backend.mapper.TraceRecordMapper;
 import com.tepinhui.tepinhui_backend.mapper.UserMapper;
 import com.tepinhui.tepinhui_backend.security.JwtUtil;
 import com.tepinhui.tepinhui_backend.service.RegisterVerificationService;
@@ -35,6 +38,15 @@ class AuthControllerTest {
 
     @MockitoBean
     private UserMapper userMapper;
+
+    @MockitoBean
+    private MerchantMapper merchantMapper;
+
+    @MockitoBean
+    private ProductMapper productMapper;
+
+    @MockitoBean
+    private TraceRecordMapper traceRecordMapper;
 
     @MockitoBean
     private PasswordEncoder passwordEncoder;

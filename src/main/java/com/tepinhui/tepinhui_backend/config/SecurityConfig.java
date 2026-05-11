@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -52,6 +53,10 @@ public class SecurityConfig {
                     "/api-docs/**",     // SpringDoc 2.x API 文档
                     "/swagger-config/**"// Swagger 配置
                 ).permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/products", "/api/v1/products/*").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/products").hasAnyRole("ADMIN", "MERCHANT")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/products/*").hasAnyRole("ADMIN", "MERCHANT")
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/products/*").hasAnyRole("ADMIN", "MERCHANT")
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/merchant/**").hasAnyRole("ADMIN", "MERCHANT")
                 .anyRequest().authenticated()
