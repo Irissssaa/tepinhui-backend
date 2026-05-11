@@ -43,6 +43,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/auth/login",      // 用户登录
+                    "/auth/register/code", // 邮箱获取注册验证码
                     "/auth/register",   // 用户注册
                     "/auth/refresh",    // 刷新 Token
                     healthEndpoint,     // 健康检查（相对于 context-path）

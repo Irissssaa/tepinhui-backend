@@ -9,10 +9,12 @@ import com.tepinhui.tepinhui_backend.common.UserStatus;
 import com.tepinhui.tepinhui_backend.dto.LoginRequest;
 import com.tepinhui.tepinhui_backend.dto.LoginResponse;
 import com.tepinhui.tepinhui_backend.dto.RefreshRequest;
+import com.tepinhui.tepinhui_backend.dto.RegisterCodeRequest;
 import com.tepinhui.tepinhui_backend.dto.RegisterRequest;
 import com.tepinhui.tepinhui_backend.entity.User;
 import com.tepinhui.tepinhui_backend.mapper.UserMapper;
 import com.tepinhui.tepinhui_backend.security.JwtUtil;
+import com.tepinhui.tepinhui_backend.service.RegisterVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -35,6 +37,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate redisTemplate;
+    private final RegisterVerificationService registerVerificationService;
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")
@@ -81,8 +84,7 @@ public class AuthController {
         String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getUsername(), roleName);
         String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getUsername(), roleName);
 
-        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
-                user.getId(), user.getUsername(), user.getNickname(), roleName);
+        LoginResponse.UserInfo userInfo = toUserInfo(user);
 
         LoginResponse response = new LoginResponse(
                 accessToken, refreshToken, "Bearer",
@@ -91,9 +93,37 @@ public class AuthController {
         return Result.success(response);
     }
 
-    @Operation(summary = "用户注册")
+    @Operation(summary = "发送邮箱注册验证码", description = "用户通过邮箱获取注册验证码，复用现有频控与邮件发送逻辑")
+    @PostMapping("/register/code")
+    public Result<Void> sendRegisterCode(@Valid @RequestBody RegisterCodeRequest request) {
+        String normalizedEmail = RegisterVerificationService.normalizeEmail(request.getEmail());
+        request.setEmail(normalizedEmail);
+
+        Long count = userMapper.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getEmail, normalizedEmail));
+        if (count > 0) {
+            return Result.error(400, "邮箱已注册");
+        }
+
+        try {
+            registerVerificationService.sendRegistrationCode(normalizedEmail);
+        } catch (IllegalArgumentException e) {
+            return Result.error(400, e.getMessage());
+        } catch (IllegalStateException e) {
+            return Result.error(500, e.getMessage());
+        } catch (RuntimeException e) {
+            return Result.error(500, "验证码发送失败，请稍后重试");
+        }
+
+        return Result.success("验证码发送成功", null);
+    }
+
+    @Operation(summary = "邮箱验证码注册", description = "用户先通过邮箱获取验证码，再提交用户名、手机号、密码和验证码完成注册")
     @PostMapping("/register")
-    public Result<Void> register(@Valid @RequestBody RegisterRequest request) {
+    public Result<LoginResponse.UserInfo> register(@Valid @RequestBody RegisterRequest request) {
+        String normalizedEmail = RegisterVerificationService.normalizeEmail(request.getEmail());
+        request.setEmail(normalizedEmail);
+
         // 检查用户名是否已存在
         Long count = userMapper.selectCount(
                 new LambdaQueryWrapper<User>().eq(User::getUsername, request.getUsername()));
@@ -109,26 +139,31 @@ public class AuthController {
         }
 
         // 检查邮箱是否已存在
-        if (request.getEmail() != null) {
-            count = userMapper.selectCount(
-                    new LambdaQueryWrapper<User>().eq(User::getEmail, request.getEmail()));
-            if (count > 0) {
-                return Result.error(400, "邮箱已注册");
-            }
+        count = userMapper.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getEmail, normalizedEmail));
+        if (count > 0) {
+            return Result.error(400, "邮箱已注册");
+        }
+
+        if (!registerVerificationService.verifyRegistrationCode(normalizedEmail, request.getCode())) {
+            return Result.error(400, "验证码错误或已过期");
         }
 
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPhone(request.getPhone());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setEmail(request.getEmail());
+        user.setEmail(normalizedEmail);
         user.setNickname(request.getNickname());
         user.setRole(Role.CONSUMER);
         user.setStatus(UserStatus.ENABLED);
 
-        userMapper.insert(user);
+        int inserted = userMapper.insert(user);
+        if (inserted != 1 || user.getId() == null) {
+            return Result.error(500, "注册失败，请稍后重试");
+        }
 
-        return Result.success("注册成功", null);
+        return Result.success("注册成功", toUserInfo(user));
     }
 
     @Operation(summary = "刷新Token")
@@ -159,8 +194,7 @@ public class AuthController {
         String newAccessToken = jwtUtil.generateAccessToken(user.getId(), user.getUsername(), roleName);
         String newRefreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getUsername(), roleName);
 
-        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
-                user.getId(), user.getUsername(), user.getNickname(), roleName);
+        LoginResponse.UserInfo userInfo = toUserInfo(user);
 
         LoginResponse response = new LoginResponse(
                 newAccessToken, newRefreshToken, "Bearer",
@@ -203,9 +237,17 @@ public class AuthController {
             return Result.error(404, "用户不存在");
         }
 
-        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
-                user.getId(), user.getUsername(), user.getNickname(), user.getRole().name());
+        LoginResponse.UserInfo userInfo = toUserInfo(user);
 
         return Result.success(userInfo);
+    }
+
+    private LoginResponse.UserInfo toUserInfo(User user) {
+        return new LoginResponse.UserInfo(
+                user.getId(),
+                user.getUsername(),
+                user.getNickname(),
+                user.getEmail(),
+                user.getRole().name());
     }
 }
