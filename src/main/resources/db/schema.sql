@@ -43,8 +43,10 @@ CREATE TABLE IF NOT EXISTS `merchant` (
     `license_no` VARCHAR(50) DEFAULT NULL COMMENT '营业执照号',
     `qualification` VARCHAR(255) DEFAULT NULL COMMENT '资质文件URL',
     `status` ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending' COMMENT '审核状态',
+    `audit_remark` VARCHAR(200) DEFAULT NULL COMMENT '审核备注',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除标记（0-正常，1-删除）',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_id` (`user_id`),
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
@@ -77,6 +79,7 @@ CREATE TABLE IF NOT EXISTS `specialty` (
     `is_landing` TINYINT DEFAULT 0 COMMENT '是否上架',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除标记（0-正常，1-删除）',
     PRIMARY KEY (`id`),
     INDEX `idx_origin_id` (`origin_id`),
     FOREIGN KEY (`origin_id`) REFERENCES `origin`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
@@ -96,6 +99,7 @@ CREATE TABLE IF NOT EXISTS `product` (
     `status` ENUM('on', 'off', 'review') NOT NULL DEFAULT 'review' COMMENT '状态（上架/下架/审核中）',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除标记（0-正常，1-删除）',
     PRIMARY KEY (`id`),
     INDEX `idx_merchant_id` (`merchant_id`),
     INDEX `idx_specialty_id` (`specialty_id`),

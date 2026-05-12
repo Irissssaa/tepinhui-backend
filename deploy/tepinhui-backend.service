@@ -8,8 +8,16 @@ User=tph
 WorkingDirectory=/home/tph/versions/latest
 EnvironmentFile=/home/tph/shared/app.env
 ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /home/tph/versions/latest/app.jar
+
+# 重启策略：失败后重启，最多重启 3 次
 Restart=on-failure
 RestartSec=10
+StartLimitBurst=3
+StartLimitIntervalSec=60
+
+# 当达到重启次数限制后，执行回退脚本（以 root 权限执行）
+FailureAction=/home/tph/scripts/run-rollback.sh
+
 StandardOutput=journal
 StandardError=journal
 

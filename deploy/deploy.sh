@@ -178,6 +178,30 @@ show_status() {
   log "========================================="
 }
 
+# 验证回退脚本已安装
+verify_rollback_scripts() {
+  local scripts_dir="${DEPLOY_PATH}/scripts"
+  local rollback_script="${scripts_dir}/rollback-on-failure.sh"
+  local run_rollback_script="${scripts_dir}/run-rollback.sh"
+
+  log "Verifying rollback scripts..."
+
+  # 检查回退脚本是否存在
+  if [[ ! -f "${rollback_script}" ]]; then
+    error "Rollback script not found: ${rollback_script}. Please check if GitHub Actions uploaded it correctly."
+  fi
+
+  # 检查 wrapper 脚本是否存在
+  if [[ ! -f "${run_rollback_script}" ]]; then
+    error "Wrapper script not found: ${run_rollback_script}. Please check if GitHub Actions uploaded it correctly."
+  fi
+
+  # 确保脚本有执行权限
+  chmod +x "${rollback_script}" "${run_rollback_script}"
+
+  log "Rollback scripts verified successfully"
+}
+
 # 检查并设置 Java 环境
 setup_java() {
   log "Checking Java version..."
@@ -399,6 +423,9 @@ main() {
   if health_check; then
     # 清理旧版本
     cleanup_old_versions
+
+    # 验证回退脚本已安装
+    verify_rollback_scripts
 
     # 显示状态
     show_status
