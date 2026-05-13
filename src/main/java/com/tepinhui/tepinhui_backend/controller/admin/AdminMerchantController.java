@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "商家审核管理", description = "管理员审核商家入驻申请和查询商家列表")
+@Tag(name = "商家-管理端接口", description = "管理员审核商家入驻申请和查询商家列表")
 @RestController
 @RequestMapping("/api/v1/admin/merchant")
 @RequiredArgsConstructor
@@ -27,7 +27,7 @@ public class AdminMerchantController {
     private final MerchantService merchantService;
 
     @GetMapping("/pending")
-    @Operation(summary = "待审核商家列表", description = "管理员分页查询待审核商家入驻申请")
+    @Operation(summary = "待审核商家列表（未实现）", description = "（未实现：当前返回空分页数据占位）管理员分页查询待审核商家入驻申请")
     public Result<MerchantPageVO> pagePending(
         @Parameter(description = "页码，从1开始")
         @RequestParam(defaultValue = "1") Long page,
@@ -38,7 +38,7 @@ public class AdminMerchantController {
     }
 
     @GetMapping("/list")
-    @Operation(summary = "商家列表", description = "管理员分页查询全部商家，可按审核状态筛选")
+    @Operation(summary = "商家列表（未实现）", description = "（未实现：当前返回空分页数据占位）管理员分页查询全部商家，可按审核状态筛选")
     public Result<MerchantPageVO> pageMerchants(
         @Parameter(description = "页码，从1开始")
         @RequestParam(defaultValue = "1") Long page,
@@ -51,7 +51,7 @@ public class AdminMerchantController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "商家详情", description = "管理员查看商家入驻资料和审核状态")
+    @Operation(summary = "商家详情（未实现）", description = "管理员查看商家入驻资料和审核状态；当前接口仅保留契约，业务逻辑待实现")
     public Result<MerchantDetailVO> getDetail(
         @Parameter(description = "商家ID", required = true)
         @PathVariable Long id
@@ -61,8 +61,8 @@ public class AdminMerchantController {
 
     @PutMapping("/{id}/audit")
     @Operation(
-        summary = "审核商家",
-        description = "管理员审核商家入驻申请；通过后后续实现应同步把关联用户角色更新为 MERCHANT"
+        summary = "审核商家（未实现）",
+        description = "管理员审核商家入驻申请；通过后后续实现应同步把关联用户角色更新为 MERCHANT；当前接口仅保留契约，业务逻辑待实现"
     )
     public Result<Void> audit(
         @Parameter(description = "商家ID", required = true)

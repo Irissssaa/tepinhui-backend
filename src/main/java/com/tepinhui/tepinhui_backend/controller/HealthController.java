@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-@Tag(name = "系统管理", description = "健康检查、系统监控")
+@Tag(name = "系统-公开接口", description = "健康检查与系统基础信息接口")
 @RestController
 public class HealthController {
 

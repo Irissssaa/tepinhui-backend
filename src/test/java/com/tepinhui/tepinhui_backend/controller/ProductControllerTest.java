@@ -1,6 +1,8 @@
 package com.tepinhui.tepinhui_backend.controller;
 
 import com.tepinhui.tepinhui_backend.config.SecurityConfig;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tepinhui.tepinhui_backend.config.ResultHttpStatusAdvice;
 import com.tepinhui.tepinhui_backend.dto.product.ProductCreateRequest;
 import com.tepinhui.tepinhui_backend.exception.GlobalExceptionHandler;
 import com.tepinhui.tepinhui_backend.mapper.MerchantMapper;
@@ -48,6 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ContextConfiguration(classes = {
     ProductController.class,
     GlobalExceptionHandler.class,
+    ResultHttpStatusAdvice.class,
     SecurityConfig.class,
     ProductControllerTest.NoOpJwtFilterConfig.class
 })
@@ -185,7 +188,9 @@ class ProductControllerTest {
         mockMvc.perform(post("/api/v1/products")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateRequestJson()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401))
+                .andExpect(jsonPath("$.message").value("未登录"));
 
         verifyNoInteractions(productService);
     }
@@ -234,8 +239,10 @@ class ProductControllerTest {
     static class NoOpJwtFilterConfig {
 
         @Bean
-        JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil, StringRedisTemplate stringRedisTemplate) {
-            return new JwtAuthenticationFilter(jwtUtil, stringRedisTemplate) {
+        JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil,
+                                                        StringRedisTemplate stringRedisTemplate,
+                                                        ObjectMapper objectMapper) {
+            return new JwtAuthenticationFilter(jwtUtil, stringRedisTemplate, objectMapper) {
                 @Override
                 protected void doFilterInternal(HttpServletRequest request,
                                                 HttpServletResponse response,
