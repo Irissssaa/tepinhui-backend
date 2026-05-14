@@ -26,7 +26,7 @@ JAR_FILE="${LATEST_VERSION}/app.jar"
 LOG_DIR="${DEPLOY_PATH}/logs"
 LOG_FILE="${LOG_DIR}/${APP_NAME}.log"
 MAX_VERSIONS="${MAX_VERSIONS:-5}"
-DEPLOY_LOCK_FILE="${DEPLOY_PATH}/shared/deploy-in-progress.lock"
+DEPLOY_LOCK_FILE="${VERSIONS_DIR}/.deploy-in-progress.lock"
 
 # systemd 服务名称
 SERVICE_NAME="${APP_NAME}"
@@ -130,7 +130,7 @@ cleanup_deploy_lock() {
 }
 
 acquire_deploy_lock() {
-  mkdir -p "${DEPLOY_PATH}/shared"
+  mkdir -p "${VERSIONS_DIR}"
   if [[ -e "${DEPLOY_LOCK_FILE}" ]]; then
     error "Another deployment appears to be in progress: ${DEPLOY_LOCK_FILE}"
   fi
@@ -548,7 +548,7 @@ while [[ $# -gt 0 ]]; do
       LOG_DIR="${DEPLOY_PATH}/logs"
       LOG_FILE="${LOG_DIR}/${APP_NAME}.log"
       APP_ENV_FILE="${APP_ENV_FILE:-${DEPLOY_PATH}/shared/app.env}"
-      DEPLOY_LOCK_FILE="${DEPLOY_PATH}/shared/deploy-in-progress.lock"
+      DEPLOY_LOCK_FILE="${VERSIONS_DIR}/.deploy-in-progress.lock"
       shift 2
       ;;
     -s|--show-status)

@@ -15,7 +15,7 @@ HEALTH_CHECK_INTERVAL="${HEALTH_CHECK_INTERVAL:-5}"
 VERSIONS_DIR="${DEPLOY_PATH}/versions"
 LATEST_VERSION="${VERSIONS_DIR}/latest"
 LOG_FILE="${DEPLOY_PATH}/logs/rollback.log"
-DEPLOY_LOCK_FILE="${DEPLOY_PATH}/shared/deploy-in-progress.lock"
+DEPLOY_LOCK_FILE="${VERSIONS_DIR}/.deploy-in-progress.lock"
 SERVICE_NAME="${APP_NAME}"
 
 normalize_path() {
