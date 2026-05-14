@@ -58,7 +58,7 @@ public class MerchantServiceImpl implements MerchantService {
             throw new BusinessException(403, "您已是商家，无需重复申请");
         }
 
-        // 检查是否已有商家申请记录（pending 或 approved）
+        // 检查是否已有 pending 或 approved 的商家申请记录（rejected 可以重新申请）
         Merchant existing = merchantMapper.selectOne(
             new LambdaQueryWrapper<Merchant>()
                 .eq(Merchant::getUserId, user.getId())
@@ -84,14 +84,15 @@ public class MerchantServiceImpl implements MerchantService {
     @Override
     public MerchantDetailVO getCurrentMerchantProfile() {
         User user = getCurrentUser();
+        // 支持查看 pending/approved 状态的商家资料（pending 时显示"待审核"）
         Merchant merchant = merchantMapper.selectOne(
             new LambdaQueryWrapper<Merchant>()
                 .eq(Merchant::getUserId, user.getId())
-                .eq(Merchant::getStatus, STATUS_APPROVED)
+                .in(Merchant::getStatus, STATUS_PENDING, STATUS_APPROVED)
                 .last("LIMIT 1")
         );
         if (merchant == null) {
-            throw new BusinessException(404, "您还不是已审核通过的商家");
+            throw new BusinessException(404, "您还没有提交商家入驻申请");
         }
         return toDetailVO(merchant);
     }

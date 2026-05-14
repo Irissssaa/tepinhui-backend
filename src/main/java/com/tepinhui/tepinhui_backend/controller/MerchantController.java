@@ -40,7 +40,7 @@ public class MerchantController {
     @GetMapping("/profile")
     @Operation(
         summary = "当前商家资料",
-        description = "查询当前登录用户关联的已审核商家资料"
+        description = "查询当前登录用户的商家资料（含 pending/approved 状态），pending 时显示待审核状态"
     )
     public Result<MerchantDetailVO> getProfile() {
         return Result.success(merchantService.getCurrentMerchantProfile());
