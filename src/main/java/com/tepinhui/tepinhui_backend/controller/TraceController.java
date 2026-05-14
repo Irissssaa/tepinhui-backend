@@ -27,8 +27,8 @@ public class TraceController {
      */
     @PostMapping
     @Operation(
-        summary = "录入溯源（部分未实现）",
-        description = "商家录入溯源信息，系统自动生成溯源码，返回溯源码与二维码URL（审核通过后）。（部分未实现：当前 merchantId 在 Controller 中硬编码为 1L，溯源码省份/品类缩写仍为示例生成规则）"
+        summary = "录入溯源",
+        description = "商家录入溯源信息，系统自动生成溯源码，返回溯源码与二维码URL（审核通过后）"
     )
     public Result<TraceRecord> inputTrace(
         @Parameter(description = "溯源录入信息")
@@ -47,8 +47,8 @@ public class TraceController {
      */
     @GetMapping("/{traceCode}")
     @Operation(
-        summary = "查询溯源全链路（部分未实现）",
-        description = "根据溯源码查询完整溯源链路信息（产品→产地→生产→加工→质检→流通），审核状态必须为pass。（部分未实现：商品、商家、产地联查和部分展示字段仍使用硬编码示例值）"
+        summary = "查询溯源全链路",
+        description = "根据溯源码查询完整溯源链路信息（产品→产地→生产→加工→质检→流通），审核状态必须为pass"
     )
     public Result<TraceQueryVO> getTraceInfo(
         @Parameter(description = "溯源码，格式：TP-XX-XX-XXXX-XXXXXX", required = true)
@@ -64,8 +64,8 @@ public class TraceController {
      */
     @GetMapping("/product/{productId}")
     @Operation(
-        summary = "商品溯源批次列表（部分未实现）",
-        description = "获取某商品全部溯源批次列表（仅展示已审核通过的）。（部分未实现：列表中的商品名、商家名仍为硬编码示例值）"
+        summary = "商品溯源批次列表",
+        description = "获取某商品全部溯源批次列表（仅展示已审核通过的）"
     )
     public Result<TracePageVO> getTraceListByProduct(
         @Parameter(description = "商品ID", required = true)
