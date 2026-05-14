@@ -70,6 +70,9 @@ public class SecurityConfig {
                     "/swagger-config/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/products", "/api/v1/products/*").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/products").hasAnyRole("ADMIN", "MERCHANT")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/products/*").hasAnyRole("ADMIN", "MERCHANT")
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/products/*").hasAnyRole("ADMIN", "MERCHANT")
                 .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/specialties", "/api/v1/specialties/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/map/*").permitAll()

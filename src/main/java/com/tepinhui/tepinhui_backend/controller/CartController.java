@@ -29,8 +29,8 @@ public class CartController {
 
     @PostMapping
     @Operation(
-        summary = "加入购物车（未实现）",
-        description = "将商品加入当前登录用户购物车；当前接口仅保留契约，业务逻辑待实现"
+        summary = "加入购物车",
+        description = "将商品加入当前登录用户购物车，已存在相同商品则累加数量；下架或不存在的商品会被拒绝，合并后数量超过库存也会被拒绝"
     )
     public Result<Void> addCartItem(
         @Parameter(description = "加入购物车请求", required = true)
@@ -42,8 +42,8 @@ public class CartController {
 
     @GetMapping
     @Operation(
-        summary = "购物车列表（未实现）",
-        description = "（未实现：当前返回空购物车占位数据）查询当前登录用户的购物车列表"
+        summary = "购物车列表",
+        description = "查询当前登录用户的购物车列表，已下架或被删除的商品不返回；返回项包含实时商品名、单价、首图与小计，并汇总总数量与总金额"
     )
     public Result<CartVO> getCurrentUserCart() {
         return Result.success(cartService.getCurrentUserCart());
@@ -51,8 +51,8 @@ public class CartController {
 
     @PutMapping("/{id}")
     @Operation(
-        summary = "修改购物车数量（未实现）",
-        description = "根据购物车项ID修改当前登录用户购物车中的商品数量；当前接口仅保留契约，业务逻辑待实现"
+        summary = "修改购物车数量",
+        description = "根据购物车项ID修改商品数量；仅本人可操作（越权返回403），数量需 ≥ 1 且不超过商品库存，关联商品下架时不允许修改"
     )
     public Result<Void> updateCartItemQuantity(
         @Parameter(description = "购物车项ID", required = true)
@@ -66,8 +66,8 @@ public class CartController {
 
     @DeleteMapping("/{id}")
     @Operation(
-        summary = "删除购物车项（未实现）",
-        description = "根据购物车项ID删除当前登录用户购物车中的商品；当前接口仅保留契约，业务逻辑待实现"
+        summary = "删除购物车项",
+        description = "根据购物车项ID物理删除当前登录用户购物车中的对应商品；仅本人可操作（越权返回403），购物车项不存在返回404"
     )
     public Result<Void> deleteCartItem(
         @Parameter(description = "购物车项ID", required = true)
@@ -79,8 +79,8 @@ public class CartController {
 
     @DeleteMapping
     @Operation(
-        summary = "清空购物车（未实现）",
-        description = "清空当前登录用户购物车中的全部商品；当前接口仅保留契约，业务逻辑待实现"
+        summary = "清空购物车",
+        description = "清空当前登录用户购物车中的全部商品（物理删除）；空购物车也返回成功"
     )
     public Result<Void> clearCurrentUserCart() {
         cartService.clearCurrentUserCart();
