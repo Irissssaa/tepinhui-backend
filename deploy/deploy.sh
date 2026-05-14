@@ -50,12 +50,37 @@ refresh_runtime_config() {
   HEALTH_URL="http://127.0.0.1:${APP_PORT}${APP_API_PREFIX}${APP_HEALTH_ENDPOINT}"
 }
 
+parse_env_file() {
+  local env_file="$1"
+  local line key value quote
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+
+    [[ -z "${line//[[:space:]]/}" ]] && continue
+    [[ "${line}" =~ ^[[:space:]]*# ]] && continue
+
+    if [[ "${line}" =~ ^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      key="${BASH_REMATCH[2]}"
+      value="${BASH_REMATCH[3]}"
+
+      if [[ ${#value} -ge 2 ]]; then
+        quote="${value:0:1}"
+        if [[ ( "${quote}" == '"' || "${quote}" == "'" ) && "${value: -1}" == "${quote}" ]]; then
+          value="${value:1:${#value}-2}"
+        fi
+      fi
+
+      printf -v "${key}" '%s' "${value}"
+      export "${key}"
+    fi
+  done < "${env_file}"
+}
+
 load_app_env() {
   if [[ -f "${APP_ENV_FILE}" ]]; then
     log "Loading application environment from ${APP_ENV_FILE}"
-    set -a
-    . "${APP_ENV_FILE}"
-    set +a
+    parse_env_file "${APP_ENV_FILE}"
   fi
 
   refresh_runtime_config
