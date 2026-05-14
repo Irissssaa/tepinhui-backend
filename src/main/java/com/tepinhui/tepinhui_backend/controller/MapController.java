@@ -23,8 +23,8 @@ public class MapController {
 
     @GetMapping("/specialties")
     @Operation(
-        summary = "特产地图分布（未实现）",
-        description = "（未实现：当前返回空列表占位）查询地图特产分布数据，供前端先对接地图点位结构"
+        summary = "特产地图分布",
+        description = "查询全国特产分布数据，按省份分组返回特产列表，含 Redis 2小时缓存"
     )
     public Result<List<SpecialtyMapVO>> listSpecialties() {
         return Result.success(mapService.listSpecialties());
@@ -32,8 +32,8 @@ public class MapController {
 
     @GetMapping("/season-recommend")
     @Operation(
-        summary = "时令特产推荐（未实现）",
-        description = "（未实现：当前返回空列表占位）查询时令特产推荐列表，供前端先对接推荐模块结构"
+        summary = "时令特产推荐",
+        description = "根据当前节气返回推荐特产列表，含 Redis 1小时缓存"
     )
     public Result<List<SeasonRecommendVO>> listSeasonRecommendations() {
         return Result.success(mapService.listSeasonRecommendations());

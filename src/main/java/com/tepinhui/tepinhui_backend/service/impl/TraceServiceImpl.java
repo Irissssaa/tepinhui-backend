@@ -7,6 +7,10 @@ import com.tepinhui.tepinhui_backend.dto.trace.TraceAuditDTO;
 import com.tepinhui.tepinhui_backend.dto.trace.TraceInputDTO;
 import com.tepinhui.tepinhui_backend.entity.*;
 import com.tepinhui.tepinhui_backend.exception.BusinessException;
+import com.tepinhui.tepinhui_backend.mapper.MerchantMapper;
+import com.tepinhui.tepinhui_backend.mapper.OriginMapper;
+import com.tepinhui.tepinhui_backend.mapper.ProductMapper;
+import com.tepinhui.tepinhui_backend.mapper.SpecialtyMapper;
 import com.tepinhui.tepinhui_backend.mapper.TraceRecordMapper;
 import com.tepinhui.tepinhui_backend.service.TraceService;
 import com.tepinhui.tepinhui_backend.vo.trace.TraceListVO;
@@ -31,6 +35,10 @@ import java.util.stream.Collectors;
 public class TraceServiceImpl implements TraceService {
 
     private final TraceRecordMapper traceRecordMapper;
+    private final ProductMapper productMapper;
+    private final MerchantMapper merchantMapper;
+    private final SpecialtyMapper specialtyMapper;
+    private final OriginMapper originMapper;
     private final RedisTemplate<String, Object> redisTemplate;
 
     private static final String CACHE_KEY_PREFIX = "trace:";
@@ -41,8 +49,8 @@ public class TraceServiceImpl implements TraceService {
     @Override
     public TraceRecord inputTrace(TraceInputDTO dto, Long merchantId) {
         // 1. 校验商品存在
-        // Product product = productMapper.selectById(dto.getProductId());
-        // if (product == null) throw new BusinessException(404, "商品不存在");
+        Product product = productMapper.selectById(dto.getProductId());
+        if (product == null) throw new BusinessException(404, "商品不存在");
 
         // 2. 生成溯源码（从商品关联获取省份+品类）
         String traceCode = generateTraceCode(dto.getProductId());
@@ -182,15 +190,80 @@ public class TraceServiceImpl implements TraceService {
      * 省份和品类从 product → specialty → origin 获取
      */
     private String generateTraceCode(Long productId) {
-        // TODO: 实际通过 productId 联查 specialty 和 origin 获取省份+品类
-        // 模拟逻辑：
-        String provinceAbbr = "ZJ";   // 浙江
-        String categoryAbbr = "LJ";   // 龙井茶
+        Product product = productMapper.selectById(productId);
+        if (product == null) throw new BusinessException(404, "商品不存在");
+
+        Specialty specialty = specialtyMapper.selectById(product.getSpecialtyId());
+        if (specialty == null) throw new BusinessException(404, "商品未关联特产");
+
+        Origin origin = originMapper.selectById(specialty.getOriginId());
+        if (origin == null) throw new BusinessException(404, "特产未关联产地");
+
+        // 省份缩写：取前2字首字母（无pinyin依赖，用前2字拼音首字母近似）
+        String provinceAbbr = toPinyinAbbr(origin.getProvinceName());
+        String categoryAbbr = toPinyinAbbr(specialty.getCategory());
         String year = String.valueOf(LocalDate.now().getYear());
         String random = String.format("%06d", new Random().nextInt(999999));
 
         return String.format("TP-%s-%s-%s-%s", provinceAbbr, categoryAbbr, year, random);
     }
+
+    /** 汉字转拼音缩写（首字母，大写），无法转换时用前2字首字符替代 */
+    private String toPinyinAbbr(String cn) {
+        if (cn == null || cn.isEmpty()) return "XX";
+        // 常用省份/品类首字母近似
+        // 全小写时直接取首字拼音首字母的缩写
+        // 简化：取前2个汉字的首字母，无法识别返回首2字符
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < cn.length() && i < 2; i++) {
+            char c = cn.charAt(i);
+            if (c >= 0x4E00 && c <= 0x9FA5) {
+                // 常用汉字到拼音首字母的映射（覆盖常见特产省份和品类）
+                String py = PINYIN_MAP.get(c);
+                sb.append(py != null ? py : Character.toUpperCase(c));
+            } else {
+                sb.append(Character.toUpperCase(c));
+            }
+        }
+        return sb.length() >= 2 ? sb.toString() : "XX";
+    }
+
+    private static final Map<Character, String> PINYIN_MAP = Map.ofEntries(
+        // 省份
+        Map.entry('浙', "ZJ"), Map.entry('江', "J"),
+        Map.entry('福', "FJ"), Map.entry('建', "J"),
+        Map.entry('四', "SC"), Map.entry('川', "C"),
+        Map.entry('安', "AH"), Map.entry('徽', "H"),
+        Map.entry('湖', "HUN"), Map.entry('南', "N"),
+        Map.entry('山', "SD"), Map.entry('东', "D"),
+        Map.entry('河', "HEN"),
+        Map.entry('广', "GD"),
+        Map.entry('云', "YN"),
+        Map.entry('贵', "GZ"), Map.entry('州', "Z"),
+        Map.entry('陕', "SX"),
+        Map.entry('甘', "GS"), Map.entry('肃', "S"),
+        Map.entry('新', "XJ"), Map.entry('疆', "J"),
+        Map.entry('青', "QH"), Map.entry('海', "H"),
+        Map.entry('宁', "NX"), Map.entry('夏', "X"),
+        Map.entry('西', "XZ"), Map.entry('藏', "Z"),
+        Map.entry('内', "NM"), Map.entry('蒙', "M"), Map.entry('古', "G"),
+        Map.entry('吉', "JL"), Map.entry('林', "L"),
+        Map.entry('黑', "HLJ"), Map.entry('龙', "L"),
+        Map.entry('辽', "LN"),
+        // 常见品类
+        Map.entry('苹', "PG"), Map.entry('果', "G"),
+        Map.entry('葡', "PT"), Map.entry('萄', "T"),
+        Map.entry('柑', "G"), Map.entry('橘', "J"),
+        Map.entry('梨', "L"), Map.entry('枣', "Z"),
+        Map.entry('核', "H"), Map.entry('桃', "T"), Map.entry('仁', "R"),
+        Map.entry('枸', "GOU"), Map.entry('杞', "Q"),
+        Map.entry('芝', "ZM"), Map.entry('麻', "M"),
+        Map.entry('大', "D"), Map.entry('蒜', "S"),
+        Map.entry('辣', "L"), Map.entry('椒', "J"),
+        Map.entry('蜂', "FM"), Map.entry('蜜', "M"),
+        Map.entry('米', "M"), Map.entry('酒', "J"),
+        Map.entry('醋', "C"), Map.entry('白', "B")
+    );
 
     /**
      * 生成二维码 URL（二维码生成服务）
@@ -208,12 +281,19 @@ public class TraceServiceImpl implements TraceService {
         vo.setTraceCode(record.getTraceCode());
         vo.setBatchNo(record.getBatchNo());
 
-        // product 层
+        // product 层（从 DB 联查）
+        Product product = productMapper.selectById(record.getProductId());
+        Merchant merchant = product != null ? merchantMapper.selectById(product.getMerchantId()) : null;
         TraceQueryVO.ProductVO productVO = new TraceQueryVO.ProductVO();
-        productVO.setName("西湖龙井·明前特级");  // TODO: 从 product 表获取
-        productVO.setSpec("250g");
-        productVO.setMerchantName("陈建国茶业旗舰店");
-        productVO.setCoverImg("https://oss.example.com/products/longjing.jpg");
+        productVO.setName(product != null ? product.getName() : null);
+        productVO.setSpec(product != null ? product.getDescription() : null);
+        productVO.setMerchantName(merchant != null ? merchant.getShopName() : null);
+        // 取 images 第一个作为封面
+        String coverImg = null;
+        if (product != null && product.getImages() != null && !product.getImages().isEmpty()) {
+            coverImg = product.getImages().split(",")[0].trim();
+        }
+        productVO.setCoverImg(coverImg);
         vo.setProduct(productVO);
 
         // origin 层
@@ -264,9 +344,11 @@ public class TraceServiceImpl implements TraceService {
             TraceListVO item = new TraceListVO();
             item.setId(record.getId());
             item.setTraceCode(record.getTraceCode());
-            // TODO: 联查 productName, merchantName
-            item.setProductName("西湖龙井");
-            item.setMerchantName("陈建国茶业旗舰店");
+            // 联查 productName, merchantName
+            Product product = productMapper.selectById(record.getProductId());
+            Merchant merchant = product != null ? merchantMapper.selectById(product.getMerchantId()) : null;
+            item.setProductName(product != null ? product.getName() : null);
+            item.setMerchantName(merchant != null ? merchant.getShopName() : null);
             item.setProducerName(record.getProducerName());
             item.setProduceDate(formatDate(record.getProduceDate()));
             item.setAuditStatus(record.getAuditStatus());

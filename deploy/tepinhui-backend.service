@@ -1,23 +1,19 @@
 [Unit]
 Description=Tepinhui Backend Application
 After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+OnFailure=tepinhui-backend-rollback.service
 
 [Service]
 Type=simple
 User=tph
 WorkingDirectory=/home/tph/versions/latest
-EnvironmentFile=/home/tph/shared/app.env
-ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /home/tph/versions/latest/app.jar
-
-# 重启策略：失败后重启，最多重启 3 次
+Environment="JAVA_OPTS=-Xms256m -Xmx512m"
+EnvironmentFile=-/home/tph/shared/app.env
+ExecStart=/bin/bash -lc 'exec /usr/bin/java $JAVA_OPTS -jar /home/tph/versions/latest/app.jar'
 Restart=on-failure
 RestartSec=10
-StartLimitBurst=3
-StartLimitIntervalSec=60
-
-# 当达到重启次数限制后，执行回退脚本（以 root 权限执行）
-FailureAction=/home/tph/scripts/run-rollback.sh
-
 StandardOutput=journal
 StandardError=journal
 

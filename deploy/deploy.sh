@@ -26,9 +26,11 @@ JAR_FILE="${LATEST_VERSION}/app.jar"
 LOG_DIR="${DEPLOY_PATH}/logs"
 LOG_FILE="${LOG_DIR}/${APP_NAME}.log"
 MAX_VERSIONS="${MAX_VERSIONS:-5}"
+DEPLOY_LOCK_FILE="${VERSIONS_DIR}/.deploy-in-progress.lock"
 
 # systemd 服务名称
 SERVICE_NAME="${APP_NAME}"
+ROLLBACK_SERVICE_NAME="${SERVICE_NAME}-rollback"
 
 normalize_path() {
   local value="$1"
@@ -42,9 +44,49 @@ normalize_path() {
   printf "%s" "${value}"
 }
 
-APP_API_PREFIX="$(normalize_path "${APP_API_PREFIX}")"
-APP_HEALTH_ENDPOINT="$(normalize_path "${APP_HEALTH_ENDPOINT}")"
-HEALTH_URL="http://127.0.0.1:${APP_PORT}${APP_API_PREFIX}${APP_HEALTH_ENDPOINT}"
+refresh_runtime_config() {
+  APP_API_PREFIX="$(normalize_path "${APP_API_PREFIX}")"
+  APP_HEALTH_ENDPOINT="$(normalize_path "${APP_HEALTH_ENDPOINT}")"
+  HEALTH_URL="http://127.0.0.1:${APP_PORT}${APP_API_PREFIX}${APP_HEALTH_ENDPOINT}"
+}
+
+parse_env_file() {
+  local env_file="$1"
+  local line key value quote
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+
+    [[ -z "${line//[[:space:]]/}" ]] && continue
+    [[ "${line}" =~ ^[[:space:]]*# ]] && continue
+
+    if [[ "${line}" =~ ^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      key="${BASH_REMATCH[2]}"
+      value="${BASH_REMATCH[3]}"
+
+      if [[ ${#value} -ge 2 ]]; then
+        quote="${value:0:1}"
+        if [[ ( "${quote}" == '"' || "${quote}" == "'" ) && "${value: -1}" == "${quote}" ]]; then
+          value="${value:1:${#value}-2}"
+        fi
+      fi
+
+      printf -v "${key}" '%s' "${value}"
+      export "${key}"
+    fi
+  done < "${env_file}"
+}
+
+load_app_env() {
+  if [[ -f "${APP_ENV_FILE}" ]]; then
+    log "Loading application environment from ${APP_ENV_FILE}"
+    parse_env_file "${APP_ENV_FILE}"
+  fi
+
+  refresh_runtime_config
+}
+
+refresh_runtime_config
 
 log() {
   printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -55,42 +97,119 @@ error() {
   exit 1
 }
 
-# 检查必要命令
 check_commands() {
-  for cmd in systemctl; do
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-      error "Missing required command: $cmd"
+  local required=(curl find sort stat systemctl tar)
+  local cmd
+  for cmd in "${required[@]}"; do
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
+      error "Missing required command: ${cmd}"
     fi
   done
 }
 
-# 创建 systemd 服务单元
+get_current_version() {
+  if [[ -L "${LATEST_VERSION}" ]]; then
+    basename "$(readlink "${LATEST_VERSION}")"
+  fi
+}
+
+version_dir() {
+  local version="$1"
+  printf '%s/%s' "${VERSIONS_DIR}" "${version}"
+}
+
+version_has_jar() {
+  local version="$1"
+  [[ -n "${version}" && -f "$(version_dir "${version}")/app.jar" ]]
+}
+
+list_versions_sorted() {
+  local dir version timestamp
+  local records=()
+
+  shopt -s nullglob
+  for dir in "${VERSIONS_DIR}"/*; do
+    [[ -d "${dir}" ]] || continue
+    version="$(basename "${dir}")"
+    [[ "${version}" == "latest" ]] && continue
+
+    if [[ -f "${dir}/app.jar" ]]; then
+      timestamp="$(stat -c '%Y' "${dir}/app.jar")"
+    else
+      timestamp="$(stat -c '%Y' "${dir}")"
+    fi
+
+    records+=("${timestamp}"$'\t'"${version}")
+  done
+  shopt -u nullglob
+
+  if (( ${#records[@]} == 0 )); then
+    return 0
+  fi
+
+  printf '%s\n' "${records[@]}" | sort -t $'\t' -k1,1nr -k2,2r | cut -f2
+}
+
+cleanup_deploy_lock() {
+  rm -f "${DEPLOY_LOCK_FILE}"
+}
+
+acquire_deploy_lock() {
+  mkdir -p "${VERSIONS_DIR}"
+  if [[ -e "${DEPLOY_LOCK_FILE}" ]]; then
+    error "Another deployment appears to be in progress: ${DEPLOY_LOCK_FILE}"
+  fi
+
+  printf '%s\n' "${VERSION}" > "${DEPLOY_LOCK_FILE}"
+  trap cleanup_deploy_lock EXIT
+}
+
 create_service_unit() {
   local service_file="/etc/systemd/system/${SERVICE_NAME}.service"
+  local rollback_service_file="/etc/systemd/system/${ROLLBACK_SERVICE_NAME}.service"
 
-  log "Creating systemd service unit: ${service_file}"
+  log "Writing systemd service unit: ${service_file}"
   sudo tee "${service_file}" >/dev/null <<EOF
 [Unit]
 Description=Tepinhui Backend Application
 After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+OnFailure=${ROLLBACK_SERVICE_NAME}.service
 
 [Service]
 Type=simple
 User=tph
 WorkingDirectory=${LATEST_VERSION}
-EnvironmentFile=${APP_ENV_FILE}
-ExecStart=/usr/bin/java ${JAVA_OPTS} -jar ${JAR_FILE}
+Environment="JAVA_OPTS=${JAVA_OPTS}"
+EnvironmentFile=-${APP_ENV_FILE}
+ExecStart=/bin/bash -lc 'exec /usr/bin/java \$JAVA_OPTS -jar ${JAR_FILE}'
 Restart=on-failure
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+  log "Writing rollback unit: ${rollback_service_file}"
+  sudo tee "${rollback_service_file}" >/dev/null <<EOF
+[Unit]
+Description=Tepinhui Backend automatic rollback
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=${DEPLOY_PATH}/scripts/rollback-on-failure.sh
+StandardOutput=journal
+StandardError=journal
+EOF
+
   sudo systemctl daemon-reload
+  sudo systemctl enable "${SERVICE_NAME}" >/dev/null 2>&1 || true
 }
 
-# 停止现有服务
 stop_service() {
   if sudo systemctl is-active "${SERVICE_NAME}" >/dev/null 2>&1; then
     log "Stopping existing service: ${SERVICE_NAME}"
@@ -99,16 +218,15 @@ stop_service() {
   fi
 }
 
-# 启动服务
 start_service() {
   log "Starting service: ${SERVICE_NAME}"
+  sudo systemctl reset-failed "${SERVICE_NAME}" >/dev/null 2>&1 || true
   sudo systemctl start "${SERVICE_NAME}"
 
   log "Waiting for service to become healthy..."
   sleep 5
 }
 
-# 健康检查
 health_check() {
   local elapsed=0
 
@@ -133,129 +251,127 @@ health_check() {
   return 1
 }
 
-# 清理旧版本
+switch_latest_symlink() {
+  local version="$1"
+  log "Updating latest symlink to version: ${version}"
+  ln -sfn "$(version_dir "${version}")" "${LATEST_VERSION}"
+}
+
 cleanup_old_versions() {
   log "Cleaning up old versions (keeping ${MAX_VERSIONS})"
 
-  local versions=()
-  for dir in "${VERSIONS_DIR}"/*; do
-    if [[ -d "$dir" && "$(basename "$dir")" != "latest" ]]; then
-      versions+=("$(basename "$dir")")
-    fi
-  done
+  local keep_count=0
+  local current_version
+  local version
+  local preserved=()
 
-  # 按版本号排序（最新的在前）
-  IFS=$'\n' sorted_versions=($(sort -r <<<"${versions[*]}"))
-  unset IFS
-
-  local count=${#sorted_versions[@]}
-  if (( count > MAX_VERSIONS )); then
-    for (( i=MAX_VERSIONS; i<count; i++ )); do
-      local old_version="${sorted_versions[$i]}"
-      log "Removing old version: ${old_version}"
-      rm -rf "${VERSIONS_DIR}/${old_version}"
-    done
+  current_version="$(get_current_version || true)"
+  preserved+=("${VERSION}")
+  if [[ -n "${current_version}" && "${current_version}" != "${VERSION}" ]]; then
+    preserved+=("${current_version}")
   fi
 
-  # 清理版本目录中散落的文件（如 source-code.tar.gz）
-  log "Cleaning up loose files in versions directory..."
-  find "${VERSIONS_DIR}" -maxdepth 1 -type f -name "*.tar.gz" -o -name "*.jar" | while read -r file; do
-    log "Removing loose file: ${file}"
-    rm -f "${file}"
-  done
+  while IFS= read -r version; do
+    [[ -n "${version}" ]] || continue
+
+    if printf '%s\n' "${preserved[@]}" | grep -Fxq "${version}"; then
+      keep_count=$((keep_count + 1))
+      continue
+    fi
+
+    if (( keep_count < MAX_VERSIONS )); then
+      keep_count=$((keep_count + 1))
+      continue
+    fi
+
+    log "Removing old version: ${version}"
+    rm -rf "$(version_dir "${version}")"
+  done < <(list_versions_sorted)
 }
 
-# 显示状态信息
 show_status() {
   log "========================================="
   log "Deployment Status"
   log "========================================="
   log "Application: ${APP_NAME}"
   log "Version: ${VERSION}"
+  log "Current version: $(get_current_version || echo 'none')"
   log "Service: ${SERVICE_NAME}"
   log "Status: $(sudo systemctl is-active "${SERVICE_NAME}" 2>/dev/null || echo 'unknown')"
   log "Health URL: ${HEALTH_URL}"
   log "========================================="
 }
 
-# 验证回退脚本已安装
 verify_rollback_scripts() {
   local scripts_dir="${DEPLOY_PATH}/scripts"
   local rollback_script="${scripts_dir}/rollback-on-failure.sh"
-  local run_rollback_script="${scripts_dir}/run-rollback.sh"
+  local manual_rollback_script="${DEPLOY_PATH}/rollback.sh"
 
   log "Verifying rollback scripts..."
 
-  # 检查回退脚本是否存在
   if [[ ! -f "${rollback_script}" ]]; then
     error "Rollback script not found: ${rollback_script}. Please check if GitHub Actions uploaded it correctly."
   fi
 
-  # 检查 wrapper 脚本是否存在
-  if [[ ! -f "${run_rollback_script}" ]]; then
-    error "Wrapper script not found: ${run_rollback_script}. Please check if GitHub Actions uploaded it correctly."
+  if [[ ! -f "${manual_rollback_script}" ]]; then
+    error "Manual rollback script not found: ${manual_rollback_script}. Please check if GitHub Actions uploaded it correctly."
   fi
 
-  # 确保脚本有执行权限
-  chmod +x "${rollback_script}" "${run_rollback_script}"
+  chmod +x "${rollback_script}" "${manual_rollback_script}"
 
   log "Rollback scripts verified successfully"
 }
 
-# 检查并设置 Java 环境
 setup_java() {
   log "Checking Java version..."
 
-  # 检查当前 java 版本
   if command -v java >/dev/null 2>&1; then
     local current_version
-    current_version=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
+    current_version="$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)"
     if [[ "${current_version}" == "${JAVA_VERSION}" ]]; then
       log "Java ${JAVA_VERSION} is already configured"
       return 0
     fi
   fi
 
-  # 查找指定版本的 Java
   local java_path=""
   local search_paths=("/usr/lib/jvm" "/usr/local/lib/jvm" "/opt/java" "/usr/lib/jvm-")
+  local search_path
 
   for search_path in "${search_paths[@]}"; do
     if [[ -d "${search_path}" ]]; then
-      java_path=$(find "${search_path}" -name "java" -path "*/bin/java" 2>/dev/null | grep -E "java-${JAVA_VERSION}|jdk-${JAVA_VERSION}|openjdk-${JAVA_VERSION}" | head -1)
+      java_path="$(find "${search_path}" -name "java" -path "*/bin/java" 2>/dev/null | grep -E "java-${JAVA_VERSION}|jdk-${JAVA_VERSION}|openjdk-${JAVA_VERSION}" | head -1 || true)"
       if [[ -n "${java_path}" ]]; then
         break
       fi
     fi
   done
 
-  # 尝试使用 update-alternatives
   if [[ -z "${java_path}" ]] && command -v update-alternatives >/dev/null 2>&1; then
-    java_path=$(update-alternatives --list java 2>/dev/null | grep -E "java-${JAVA_VERSION}|jdk-${JAVA_VERSION}|openjdk-${JAVA_VERSION}" | head -1)
+    java_path="$(update-alternatives --list java 2>/dev/null | grep -E "java-${JAVA_VERSION}|jdk-${JAVA_VERSION}|openjdk-${JAVA_VERSION}" | head -1 || true)"
   fi
 
   if [[ -z "${java_path}" ]]; then
     error "Java ${JAVA_VERSION} not found. Please install Java ${JAVA_VERSION}:\n  Ubuntu/Debian: sudo apt install openjdk-${JAVA_VERSION}-jdk\n  CentOS/RHEL: sudo yum install java-${JAVA_VERSION}-openjdk-devel"
   fi
 
-  export JAVA_HOME=$(dirname $(dirname "$java_path"))
-  export PATH="${JAVA_HOME}/bin:$PATH"
+  export JAVA_HOME
+  JAVA_HOME="$(dirname "$(dirname "${java_path}")")"
+  export PATH="${JAVA_HOME}/bin:${PATH}"
 
   log "Using Java: $(java -version 2>&1 | head -n 1)"
 }
 
-# 验证部署环境
 verify_deployment_environment() {
   log "Verifying deployment environment..."
 
-  # 检查版本目录是否存在
-  local version_dir="${VERSIONS_DIR}/${VERSION}"
-  if [[ ! -d "${version_dir}" ]]; then
-    error "Version directory does not exist: ${version_dir}"
+  local version_dir_path
+  version_dir_path="$(version_dir "${VERSION}")"
+  if [[ ! -d "${version_dir_path}" ]]; then
+    error "Version directory does not exist: ${version_dir_path}"
   fi
 
-  # 检查源代码包是否存在
-  local tar_file="${version_dir}/source-code.tar.gz"
+  local tar_file="${version_dir_path}/source-code.tar.gz"
   if [[ ! -f "${tar_file}" ]]; then
     error "Source code package not found at: ${tar_file}"
   fi
@@ -263,63 +379,54 @@ verify_deployment_environment() {
   log "Deployment environment verified successfully"
 }
 
-# 构建应用程序
 build_application() {
   log "Building application..."
 
-  # 确保 VERSION 目录存在
-  local version_dir="${VERSIONS_DIR}/${VERSION}"
-  mkdir -p "${version_dir}"
+  local version_dir_path
+  local jar_file_path
+  version_dir_path="$(version_dir "${VERSION}")"
 
-  # 切换到源代码目录
-  cd "${version_dir}"
+  mkdir -p "${version_dir_path}"
+  cd "${version_dir_path}"
 
-  # 检查 mvnw 是否存在
   if [[ ! -f "./mvnw" ]]; then
-    error "mvnw not found in ${version_dir}. Make sure source code is extracted correctly."
+    error "mvnw not found in ${version_dir_path}. Make sure source code is extracted correctly."
   fi
 
-  # 确保 Maven Wrapper 可执行
   chmod +x mvnw
 
-  # 构建项目（跳过测试）
   if ! ./mvnw -B clean package -DskipTests; then
     error "Maven build failed. Check the build logs above for errors."
   fi
 
-  # 检查构建结果
-  if [[ ! -f "target/${APP_NAME}.jar" ]]; then
-    # 查找所有 JAR 文件
-    JAR_FILES=$(find target -name "*.jar" -type f 2>/dev/null | head -n 5)
-    if [[ -z "${JAR_FILES}" ]]; then
-      error "Build failed - no JAR file found in target directory"
-    fi
-    # 使用找到的第一个 JAR
-    JAR_FILE_PATH=$(echo "$JAR_FILES" | head -n 1)
-    log "Using JAR: ${JAR_FILE_PATH}"
+  if [[ -f "target/${APP_NAME}.jar" ]]; then
+    jar_file_path="target/${APP_NAME}.jar"
   else
-    JAR_FILE_PATH="target/${APP_NAME}.jar"
+    jar_file_path="$(find target -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-javadoc.jar" 2>/dev/null | head -n 1 || true)"
+    if [[ -z "${jar_file_path}" ]]; then
+      error "Build failed - no runnable JAR file found in target directory"
+    fi
+    log "Using JAR: ${jar_file_path}"
   fi
 
-  # 复制 JAR 到版本目录根目录
-  cp "${JAR_FILE_PATH}" "${version_dir}/app.jar"
+  cp "${jar_file_path}" "${version_dir_path}/app.jar"
   log "Build completed successfully"
 }
 
-# 解压源代码包
 extract_source_code() {
-  local version_dir="${VERSIONS_DIR}/${VERSION}"
-  local tar_file="${version_dir}/source-code.tar.gz"
+  local version_dir_path
+  local tar_file
+  version_dir_path="$(version_dir "${VERSION}")"
+  tar_file="${version_dir_path}/source-code.tar.gz"
 
   log "Extracting source code..."
   log "Looking for source package at: ${tar_file}"
 
-  # 列出版本目录内容（用于调试）
-  if [[ -d "${version_dir}" ]]; then
+  if [[ -d "${version_dir_path}" ]]; then
     log "Version directory contents:"
-    ls -lh "${version_dir}" 2>/dev/null || log "Directory is empty"
+    ls -lh "${version_dir_path}" 2>/dev/null || log "Directory is empty"
   else
-    error "Version directory does not exist: ${version_dir}"
+    error "Version directory does not exist: ${version_dir_path}"
   fi
 
   if [[ ! -f "${tar_file}" ]]; then
@@ -328,39 +435,37 @@ extract_source_code() {
 
   log "Source package found, size: $(du -h "${tar_file}" | cut -f1)"
 
-  # 确保版本目录存在
-  mkdir -p "${version_dir}"
+  mkdir -p "${version_dir_path}"
 
-  # 清理解压后可能存在的旧文件
-  if [[ -f "${version_dir}/pom.xml" ]]; then
+  if [[ -f "${version_dir_path}/pom.xml" ]]; then
     log "Cleaning up existing source code in version directory..."
-    rm -rf "${version_dir}/src" "${version_dir}/pom.xml" "${version_dir}/.mvn" "${version_dir}/mvnw" "${version_dir}/mvnw.cmd"
+    rm -rf \
+      "${version_dir_path}/src" \
+      "${version_dir_path}/pom.xml" \
+      "${version_dir_path}/.mvn" \
+      "${version_dir_path}/mvnw" \
+      "${version_dir_path}/mvnw.cmd"
   fi
 
-  # 解压到版本目录（使用 -C 参数）
-  if ! tar xzf "${tar_file}" -C "${version_dir}"; then
+  if ! tar xzf "${tar_file}" -C "${version_dir_path}"; then
     error "Failed to extract source code"
   fi
 
-  # 验证关键文件是否存在
-  if [[ ! -f "${version_dir}/pom.xml" ]]; then
+  if [[ ! -f "${version_dir_path}/pom.xml" ]]; then
     log "Listing version directory after extraction:"
-    ls -lhR "${version_dir}" | head -30
+    ls -lhR "${version_dir_path}" | head -30
     error "pom.xml not found after extraction. Source code may be corrupted."
   fi
 
-  # 删除源代码包（节省空间）
   rm -f "${tar_file}"
   log "Deleted source package to save space"
 
-  log "Source code extracted successfully to ${version_dir}"
+  log "Source code extracted successfully to ${version_dir_path}"
 }
 
-# 清理版本目录中的散落文件
 cleanup_loose_files() {
   log "Cleaning up loose files in versions directory..."
 
-  # 查找并删除散落在版本目录中的文件（不是目录）
   find "${VERSIONS_DIR}" -maxdepth 1 -type f \( -name "*.tar.gz" -o -name "*.jar" -o -name "*.log" \) | while read -r file; do
     log "Removing loose file: ${file}"
     rm -f "${file}"
@@ -369,75 +474,66 @@ cleanup_loose_files() {
   log "Loose files cleanup completed"
 }
 
-# 主执行流程
+rollback_failed_deployment() {
+  local previous_version="$1"
+
+  log "Deployment health check failed for version: ${VERSION}"
+
+  if [[ -z "${previous_version}" || "${previous_version}" == "${VERSION}" ]]; then
+    error "Deployment failed and no previous healthy version is available for rollback"
+  fi
+
+  if ! version_has_jar "${previous_version}"; then
+    error "Deployment failed and previous version is not runnable: ${previous_version}"
+  fi
+
+  log "Rolling back to previous version: ${previous_version}"
+  sudo systemctl stop "${SERVICE_NAME}" >/dev/null 2>&1 || true
+  switch_latest_symlink "${previous_version}"
+  start_service
+
+  if health_check; then
+    error "Deployment failed and was rolled back to ${previous_version}"
+  fi
+
+  error "Deployment failed and automatic rollback to ${previous_version} also failed"
+}
+
 main() {
   log "Starting deployment of version: ${VERSION}"
 
-  # 检查必要命令
   check_commands
-
-  # 清理版本目录中的散落文件
+  acquire_deploy_lock
   cleanup_loose_files
-
-  # 检查并设置 Java 环境
   setup_java
-
-  # 验证部署环境
   verify_deployment_environment
 
-  # 创建必要的目录
-  mkdir -p "${LOG_DIR}" "${VERSIONS_DIR}/${VERSION}"
+  mkdir -p "${LOG_DIR}" "$(version_dir "${VERSION}")"
 
-  # 解压源代码包
   extract_source_code
-
-  # 构建应用程序
   build_application
+  create_service_unit
+  verify_rollback_scripts
 
-  # 检查 JAR 文件
-  local version_dir="${VERSIONS_DIR}/${VERSION}"
-  if [[ ! -f "${version_dir}/app.jar" ]]; then
-    error "JAR file not found: ${version_dir}/app.jar"
-  fi
+  load_app_env
 
-  # 创建 systemd 服务单元（如果不存在）
-  if [[ ! -f "/etc/systemd/system/${SERVICE_NAME}.service" ]]; then
-    create_service_unit
-  fi
+  local previous_version=""
+  previous_version="$(get_current_version || true)"
 
-  # 加载环境变量
-  if [[ -f "${APP_ENV_FILE}" ]]; then
-    log "Loading application environment from ${APP_ENV_FILE}"
-    set -a
-    . "${APP_ENV_FILE}"
-    set +a
-  fi
-
-  # 停止现有服务
   stop_service
-
-  # 启动服务
+  switch_latest_symlink "${VERSION}"
   start_service
 
-  # 健康检查
   if health_check; then
-    # 清理旧版本
     cleanup_old_versions
-
-    # 验证回退脚本已安装
-    verify_rollback_scripts
-
-    # 显示状态
     show_status
-
     log "Deployment completed successfully!"
     exit 0
-  else
-    error "Deployment failed - health check failed"
   fi
+
+  rollback_failed_deployment "${previous_version}"
 }
 
-# 显示帮助信息
 show_help() {
   cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
@@ -446,9 +542,9 @@ Deploy Tepinhui Backend application.
 
 Options:
   -v, --version VERSION    Deployment version (default: auto-generated)
-  -p, --path PATH         Deployment path (default: /home/tph)
-  -s, --show-status       Show current service status
-  -h, --help              Show this help message
+  -p, --path PATH          Deployment path (default: /home/tph)
+  -s, --show-status        Show current service status
+  -h, --help               Show this help message
 
 Environment Variables:
   APP_NAME                 Application name (default: tepinhui-backend)
@@ -463,7 +559,6 @@ Examples:
 EOF
 }
 
-# 解析命令行参数
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -v|--version)
@@ -475,6 +570,10 @@ while [[ $# -gt 0 ]]; do
       VERSIONS_DIR="${DEPLOY_PATH}/versions"
       LATEST_VERSION="${VERSIONS_DIR}/latest"
       JAR_FILE="${LATEST_VERSION}/app.jar"
+      LOG_DIR="${DEPLOY_PATH}/logs"
+      LOG_FILE="${LOG_DIR}/${APP_NAME}.log"
+      APP_ENV_FILE="${APP_ENV_FILE:-${DEPLOY_PATH}/shared/app.env}"
+      DEPLOY_LOCK_FILE="${VERSIONS_DIR}/.deploy-in-progress.lock"
       shift 2
       ;;
     -s|--show-status)

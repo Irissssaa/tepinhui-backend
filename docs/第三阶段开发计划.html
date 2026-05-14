@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>&#x7b2c;&#x4e09;&#x9636;&#x6bb5;&#x5f00;&#x53d1;&#x8ba1;&#x5212;&#xff1a;&#x7279;&#x54c1;&#x6c47;&#x540e;&#x7aef;&#x63a5;&#x53e3;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="第三阶段开发计划特品汇后端接口">第三阶段开发计划：特品汇后端接口</h1>
+<h2 id="0-当前仓库状态同步t12">0. 当前仓库状态同步（T12）</h2>
+<p>本节用于同步当前代码仓库的真实完成边界，优先级高于下文的原始“待开发”规划描述。当前代码已经补齐大部分模块的 Controller、DTO/VO、Swagger 注解、安全规则和框架级测试，但除少数模块外，很多接口仍处于“契约已定、业务待补”的阶段。</p>
+<h3 id="01-状态口径">0.1 状态口径</h3>
+<ul>
+<li><code>已实现业务逻辑</code>：已有真实 Service 处理流程，至少覆盖主要数据读写、权限控制、缓存或状态流转中的核心部分。</li>
+<li><code>接口框架已搭建，业务未实现</code>：接口路径、请求/响应契约、Swagger 文档、安全规则和基础测试已就位，但 Service 仍返回空结构占位数据，或抛出 <code>501</code> 类业务待实现异常。</li>
+<li><code>部分实现</code>：接口已可调用，且实现了部分核心逻辑，但仍存在硬编码、联查缺失、示例数据或链路未闭环的问题。</li>
+</ul>
+<h3 id="02-swagger-未实现-标记说明">0.2 Swagger <code>（未实现）</code> 标记说明</h3>
+<p>Swagger 中标注 <code>（未实现）</code>，表示该接口的路径、鉴权规则、请求参数、响应结构和统一返回格式 <code>Result&lt;T&gt;</code> 已确定，可用于前后端联调，但当前 Service 没有真实业务实现。</p>
+<h3 id="03-当前模块完成边界">0.3 当前模块完成边界</h3>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>当前状态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>认证</td>
+<td>✅ 已实现业务逻辑</td>
+<td>登录、注册、刷新、登出、当前用户信息</td>
+</tr>
+<tr>
+<td>商品</td>
+<td>✅ 已实现业务逻辑</td>
+<td>列表、详情、创建、更新、删除、缓存与权限控制</td>
+</tr>
+<tr>
+<td>溯源</td>
+<td>✅ 已实现业务逻辑</td>
+<td>录入/查询/审核全链路已通，含Redis缓存24h；录入需商品真实关联校验；溯源码省份/品类通过product→specialty→origin三级联查生成；查询接口联查真实商品名/商家名</td>
+</tr>
+<tr>
+<td>分类</td>
+<td>✅ 接口框架已搭建</td>
+<td>CategoryController + CategoryService（未实现业务逻辑）</td>
+</tr>
+<tr>
+<td>特产</td>
+<td>✅ 已实现业务逻辑</td>
+<td>SpecialtyServiceImpl 含Redis 2h缓存 + 联查origin/culture，接口可正常返回数据</td>
+</tr>
+<tr>
+<td>地图 &amp; 统计</td>
+<td>✅ 已实现业务逻辑</td>
+<td>MapServiceImpl（Redis 2h/1h缓存）+ StatsServiceImpl（Redis 1h缓存），5个接口全部实现</td>
+</tr>
+<tr>
+<td>商家入驻</td>
+<td>⚠️ 接口框架已搭建，业务未实现</td>
+<td>接口、Swagger、安全规则已补齐，但审核链路和角色流转未落地</td>
+</tr>
+<tr>
+<td>用户中心</td>
+<td>⚠️ 接口框架已搭建，业务未实现</td>
+<td>UserController + UserProfileService 仅完成契约、占位返回</td>
+</tr>
+<tr>
+<td>地址</td>
+<td>⚠️ 接口框架已搭建，业务未实现</td>
+<td>AddressController 仅完成契约和权限</td>
+</tr>
+<tr>
+<td>购物车</td>
+<td>⚠️ 接口框架已搭建，业务未实现</td>
+<td>CartController + CartService 未实现真实下单逻辑</td>
+</tr>
+<tr>
+<td>订单</td>
+<td>⚠️ 接口框架已搭建，业务未实现</td>
+<td>OrderController + OrderService 未实现库存、支付、状态流转</td>
+</tr>
+<tr>
+<td>评价</td>
+<td>⚠️ 接口框架已搭建，业务未实现</td>
+<td>ReviewService 未实现真实评价逻辑</td>
+</tr>
+<tr>
+<td>管理后台</td>
+<td>⚠️ 接口框架已搭建，业务未实现</td>
+<td>AdminMerchant/Product/Specialty/Stats/UserController 未实现真实管理逻辑</td>
+</tr>
+</tbody>
+</table>
+<h3 id="04-当前角色约束">0.4 当前角色约束</h3>
+<ul>
+<li>普通注册固定创建为 <code>CONSUMER</code>。</li>
+<li>商家角色 <code>MERCHANT</code> 不通过普通注册直接授予，应在商家入驻审核通过后由后端执行角色流转。</li>
+<li>管理员角色 <code>ADMIN</code> 不开放普通注册，只能由受控后台或初始化脚本创建。</li>
+</ul>
+<h3 id="05-后续业务实现优先级">0.5 后续业务实现优先级</h3>
+<ol>
+<li>先完成商家审核与用户角色流转，打通 <code>CONSUMER -&gt; MERCHANT</code> 的真实授予链路。</li>
+<li>再完成购物车与订单，补上下单、库存、支付前后状态和评价闭环。</li>
+<li>最后补平台看板和文化内容。</li>
+</ol>
+<h3 id="06-当前建议验证命令">0.6 当前建议验证命令</h3>
+<pre><code class="language-bash"><span class="hljs-comment"># 本地启动测试</span>
+./mvnw <span class="hljs-built_in">test</span>
+
+<span class="hljs-comment"># 服务器健康检查</span>
+curl https://82.156.12.252/tph/health
+
+<span class="hljs-comment"># Swagger 文档</span>
+https://82.156.12.252/tph/swagger-ui/index.html
+
+<span class="hljs-comment"># 溯源公开查询（无需认证）</span>
+curl https://82.156.12.252/tph/api/v1/trace/product/1
+
+<span class="hljs-comment"># 商品公开查询（无需认证）</span>
+curl https://82.156.12.252/tph/api/v1/products
+</code></pre>
+<h3 id="07-合-main-后的冲突记录2026-05-14">0.7 合 main 后的冲突记录（2026-05-14）</h3>
+<p>队友 main 分支合入 dev-zyx 时，特产模块存在冲突：</p>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>处理方式</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SecurityConfig</td>
+<td>用 dev-zyx 版本</td>
+<td>我的安全配置更完整（溯源查询+特产接口放行）</td>
+</tr>
+<tr>
+<td>SpecialtyMapper</td>
+<td>用 main 版本</td>
+<td>队友的 Mapper 包含更完整的查询方法</td>
+</tr>
+<tr>
+<td>SpecialtyService</td>
+<td>用 main 版本</td>
+<td>队友的接口定义更完整</td>
+</tr>
+<tr>
+<td>SpecialtyServiceImpl</td>
+<td>用 main 版本</td>
+<td>⚠️ 队友版本为空壳，我的 Redis 缓存实现被覆盖，重新实现后已 push</td>
+</tr>
+<tr>
+<td>SpecialtyController</td>
+<td>用 main 版本</td>
+<td>⚠️ 队友版本为空壳，我的完整实现被覆盖，重新实现后已 push</td>
+</tr>
+<tr>
+<td>MapServiceImpl</td>
+<td>用 main 版本</td>
+<td>⚠️ 队友版本为空壳，已重新实现（含 Redis 缓存），已 push</td>
+</tr>
+</tbody>
+</table>
+<p><strong>✅ 冲突已全部处理完毕：特产和地图模块均已重新实现并 push。</strong></p>
+<h2 id="一人员分工">一、人员分工</h2>
+<h3 id="张圯炫后端核心">张圯炫（后端核心）</h3>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>任务</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第二阶段</td>
+<td>初始化 Spring Boot 3 项目骨架（MyBatis-Plus + Redis + Swagger + 全局异常处理），推送到 main</td>
+<td>✅ 已完成</td>
+</tr>
+<tr>
+<td>第三阶段</td>
+<td>地图数据接口（ECharts，供可视化大屏调用）</td>
+<td>⚠️ 接口框架已搭建，当前返回占位数据</td>
+</tr>
+<tr>
+<td>第三阶段</td>
+<td>溯源模块全链路接口（信息录入 + 带缓存查询）</td>
+<td>✅ 录入/查询/审核全链路已通，含Redis缓存24h，省份品类联查商品表，商品名商家名真实联查</td>
+</tr>
+<tr>
+<td>第三阶段</td>
+<td>商家审核管理后台接口</td>
+<td>⚠️ 接口框架已搭建，业务未实现</td>
+</tr>
+</tbody>
+</table>
+<h3 id="乃吉木丁后端">乃吉木丁（后端）</h3>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>任务</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第二阶段</td>
+<td>MySQL 8.0 建库建表，测试数据 SQL 脚本</td>
+<td>⚠️ 仓库内已有 <code>schema.sql</code>，需继续和实体字段保持一致</td>
+</tr>
+<tr>
+<td>第二阶段</td>
+<td>Spring Security + JWT 鉴权模块集成</td>
+<td>✅ 已完成</td>
+</tr>
+<tr>
+<td>第三阶段</td>
+<td>用户注册/登录接口（JWT 签发）</td>
+<td>✅ 已完成</td>
+</tr>
+<tr>
+<td>第三阶段</td>
+<td>商品 CRUD 接口（增删改查）</td>
+<td>✅ 已完成（含缓存、权限和定向测试）</td>
+</tr>
+<tr>
+<td>第三阶段</td>
+<td>购物车逻辑接口</td>
+<td>⚠️ 接口框架已搭建，业务未实现</td>
+</tr>
+<tr>
+<td>第三阶段</td>
+<td>订单流转及状态更新接口</td>
+<td>⚠️ 接口框架已搭建，业务未实现</td>
+</tr>
+</tbody>
+</table>
+<h3 id="注意事项">注意事项</h3>
+<table>
+<thead>
+<tr>
+<th>人员</th>
+<th>注意要点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>张圯炫</td>
+<td>Swagger 接口文档是前后端协作唯一标准，必须第一时间更新；地图接口响应速度必须保证（Redis 缓存）；溯源接口严格按 trace_solution.html 实现</td>
+</tr>
+<tr>
+<td>乃吉木丁</td>
+<td>用户-商品-订单表关联多，MyBatis-Plus 注意 SQL 效率；鉴权必须拦截准确，未登录用户不能调用下单接口</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="二数据库表设计严格按-pdf">二、数据库表设计（严格按 PDF）</h2>
+<h3 id="表清单13张">表清单（13张）</h3>
+<table>
+<thead>
+<tr>
+<th>表名</th>
+<th>说明</th>
+<th>负责人</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>user</td>
+<td>用户表</td>
+<td>乃吉木丁</td>
+</tr>
+<tr>
+<td>merchant</td>
+<td>商家表</td>
+<td>张圯炫</td>
+</tr>
+<tr>
+<td>origin</td>
+<td>产地表</td>
+<td>张圯炫</td>
+</tr>
+<tr>
+<td>specialty</td>
+<td>特产表</td>
+<td>张圯炫</td>
+</tr>
+<tr>
+<td>product</td>
+<td>商品表</td>
+<td>乃吉木丁</td>
+</tr>
+<tr>
+<td>orders</td>
+<td>订单表</td>
+<td>乃吉木丁</td>
+</tr>
+<tr>
+<td>order_item</td>
+<td>订单明细表</td>
+<td>乃吉木丁</td>
+</tr>
+<tr>
+<td>cart_item</td>
+<td>购物车表</td>
+<td>乃吉木丁</td>
+</tr>
+<tr>
+<td>address</td>
+<td>收货地址表</td>
+<td>乃吉木丁</td>
+</tr>
+<tr>
+<td>review</td>
+<td>商品评价表</td>
+<td>乃吉木丁</td>
+</tr>
+<tr>
+<td>category</td>
+<td>商品分类表</td>
+<td>张圯炫</td>
+</tr>
+<tr>
+<td>trace_record</td>
+<td>溯源记录表</td>
+<td>张圯炫</td>
+</tr>
+<tr>
+<td>culture_content</td>
+<td>特产文化内容表</td>
+<td>张圯炫</td>
+</tr>
+</tbody>
+</table>
+<h3 id="trace_record-溯源记录表张圯炫负责">trace_record 溯源记录表（张圯炫负责）</h3>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>BIGINT</td>
+<td>溯源记录ID（PK）</td>
+</tr>
+<tr>
+<td>trace_code</td>
+<td>VARCHAR(64)</td>
+<td>溯源码（UNIQUE）</td>
+</tr>
+<tr>
+<td>product_id</td>
+<td>BIGINT</td>
+<td>关联 <a href="http://product.id">product.id</a></td>
+</tr>
+<tr>
+<td>batch_no</td>
+<td>VARCHAR(50)</td>
+<td>批次号</td>
+</tr>
+<tr>
+<td>qr_url</td>
+<td>VARCHAR(255)</td>
+<td>二维码URL</td>
+</tr>
+<tr>
+<td>origin_address</td>
+<td>VARCHAR(200)</td>
+<td>产地详细地址</td>
+</tr>
+<tr>
+<td>longitude</td>
+<td>DECIMAL(10,6)</td>
+<td>经度</td>
+</tr>
+<tr>
+<td>latitude</td>
+<td>DECIMAL(10,6)</td>
+<td>纬度</td>
+</tr>
+<tr>
+<td>produce_date</td>
+<td>DATE</td>
+<td>生产日期</td>
+</tr>
+<tr>
+<td>producer_name</td>
+<td>VARCHAR(100)</td>
+<td>生产商名称</td>
+</tr>
+<tr>
+<td>raw_material</td>
+<td>TEXT</td>
+<td>原材料信息</td>
+</tr>
+<tr>
+<td>process_factory</td>
+<td>VARCHAR(100)</td>
+<td>加工厂名称</td>
+</tr>
+<tr>
+<td>process_date</td>
+<td>DATE</td>
+<td>加工日期</td>
+</tr>
+<tr>
+<td>process_desc</td>
+<td>TEXT</td>
+<td>加工过程描述</td>
+</tr>
+<tr>
+<td>inspect_org</td>
+<td>VARCHAR(100)</td>
+<td>检测机构</td>
+</tr>
+<tr>
+<td>inspect_date</td>
+<td>DATE</td>
+<td>检测日期</td>
+</tr>
+<tr>
+<td>inspect_result</td>
+<td>VARCHAR(50)</td>
+<td>检测结果</td>
+</tr>
+<tr>
+<td>inspect_report_url</td>
+<td>VARCHAR(255)</td>
+<td>检测报告URL</td>
+</tr>
+<tr>
+<td>warehouse_in_time</td>
+<td>DATETIME</td>
+<td>入库时间</td>
+</tr>
+<tr>
+<td>warehouse_out_time</td>
+<td>DATETIME</td>
+<td>出库时间</td>
+</tr>
+<tr>
+<td>logistics_info</td>
+<td>TEXT</td>
+<td>物流信息</td>
+</tr>
+<tr>
+<td>audit_status</td>
+<td>ENUM</td>
+<td>审核状态（pending/pass/reject）</td>
+</tr>
+<tr>
+<td>audit_remark</td>
+<td>VARCHAR(200)</td>
+<td>审核备注</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>DATETIME</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>updated_at</td>
+<td>DATETIME</td>
+<td>更新时间</td>
+</tr>
+</tbody>
+</table>
+<h3 id="其他核心表乃吉木丁负责">其他核心表（乃吉木丁负责）</h3>
+<p><strong>user 用户表</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>BIGINT</td>
+<td>用户ID（PK）</td>
+</tr>
+<tr>
+<td>username</td>
+<td>VARCHAR(50)</td>
+<td>用户名</td>
+</tr>
+<tr>
+<td>phone</td>
+<td>VARCHAR(20)</td>
+<td>手机号</td>
+</tr>
+<tr>
+<td>email</td>
+<td>VARCHAR(100)</td>
+<td>邮箱</td>
+</tr>
+<tr>
+<td>nickname</td>
+<td>VARCHAR(50)</td>
+<td>昵称</td>
+</tr>
+<tr>
+<td>avatar_url</td>
+<td>VARCHAR(255)</td>
+<td>头像URL</td>
+</tr>
+<tr>
+<td>password</td>
+<td>VARCHAR(255)</td>
+<td>密码（BCrypt加密）</td>
+</tr>
+<tr>
+<td>role</td>
+<td>ENUM</td>
+<td>角色（CONSUMER/MERCHANT/ADMIN）</td>
+</tr>
+<tr>
+<td>status</td>
+<td>TINYINT</td>
+<td>状态（0-禁用，1-启用）</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>DATETIME</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>updated_at</td>
+<td>DATETIME</td>
+<td>更新时间</td>
+</tr>
+</tbody>
+</table>
+<p><strong>merchant 商家表</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>BIGINT</td>
+<td>商家ID（PK）</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>BIGINT</td>
+<td>关联 <a href="http://user.id">user.id</a></td>
+</tr>
+<tr>
+<td>shop_name</td>
+<td>VARCHAR(100)</td>
+<td>店铺名称</td>
+</tr>
+<tr>
+<td>license_no</td>
+<td>VARCHAR(50)</td>
+<td>营业执照号</td>
+</tr>
+<tr>
+<td>qualification</td>
+<td>VARCHAR(255)</td>
+<td>资质文件URL</td>
+</tr>
+<tr>
+<td>status</td>
+<td>ENUM</td>
+<td>审核状态（pending/approved/rejected）</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>DATETIME</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>updated_at</td>
+<td>DATETIME</td>
+<td>更新时间</td>
+</tr>
+</tbody>
+</table>
+<p><strong>product 商品表</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>BIGINT</td>
+<td>商品ID（PK）</td>
+</tr>
+<tr>
+<td>merchant_id</td>
+<td>BIGINT</td>
+<td>关联 <a href="http://merchant.id">merchant.id</a></td>
+</tr>
+<tr>
+<td>specialty_id</td>
+<td>BIGINT</td>
+<td>关联 <a href="http://specialty.id">specialty.id</a></td>
+</tr>
+<tr>
+<td>name</td>
+<td>VARCHAR(200)</td>
+<td>商品名称</td>
+</tr>
+<tr>
+<td>description</td>
+<td>TEXT</td>
+<td>商品描述</td>
+</tr>
+<tr>
+<td>price</td>
+<td>DECIMAL(10,2)</td>
+<td>价格</td>
+</tr>
+<tr>
+<td>stock</td>
+<td>INT</td>
+<td>库存</td>
+</tr>
+<tr>
+<td>images</td>
+<td>JSON</td>
+<td>商品图片列表</td>
+</tr>
+<tr>
+<td>status</td>
+<td>ENUM</td>
+<td>状态（on/off/review）</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>DATETIME</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>updated_at</td>
+<td>DATETIME</td>
+<td>更新时间</td>
+</tr>
+</tbody>
+</table>
+<p><strong>orders 订单表</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>BIGINT</td>
+<td>订单ID（PK）</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>BIGINT</td>
+<td>关联 <a href="http://user.id">user.id</a></td>
+</tr>
+<tr>
+<td>order_no</td>
+<td>VARCHAR(32)</td>
+<td>订单号（唯一）</td>
+</tr>
+<tr>
+<td>total_amount</td>
+<td>DECIMAL(10,2)</td>
+<td>总金额</td>
+</tr>
+<tr>
+<td>status</td>
+<td>ENUM</td>
+<td>状态（pending/paid/shipped/done/cancelled）</td>
+</tr>
+<tr>
+<td>address</td>
+<td>JSON</td>
+<td>收货地址快照</td>
+</tr>
+<tr>
+<td>logistics_no</td>
+<td>VARCHAR(50)</td>
+<td>物流单号</td>
+</tr>
+<tr>
+<td>remark</td>
+<td>VARCHAR(500)</td>
+<td>备注</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>DATETIME</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>updated_at</td>
+<td>DATETIME</td>
+<td>更新时间</td>
+</tr>
+</tbody>
+</table>
+<p><strong>origin 产地表</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>BIGINT</td>
+<td>产地ID（PK）</td>
+</tr>
+<tr>
+<td>province_name</td>
+<td>VARCHAR(30)</td>
+<td>省份名称</td>
+</tr>
+<tr>
+<td>city_name</td>
+<td>VARCHAR(30)</td>
+<td>城市名称</td>
+</tr>
+<tr>
+<td>county_name</td>
+<td>VARCHAR(30)</td>
+<td>区县名称</td>
+</tr>
+<tr>
+<td>geo_code</td>
+<td>VARCHAR(20)</td>
+<td>地理编码</td>
+</tr>
+<tr>
+<td>longitude</td>
+<td>DECIMAL(10,6)</td>
+<td>经度</td>
+</tr>
+<tr>
+<td>latitude</td>
+<td>DECIMAL(10,6)</td>
+<td>纬度</td>
+</tr>
+<tr>
+<td>address</td>
+<td>VARCHAR(200)</td>
+<td>详细地址</td>
+</tr>
+</tbody>
+</table>
+<p><strong>specialty 特产表</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>BIGINT</td>
+<td>特产ID（PK）</td>
+</tr>
+<tr>
+<td>origin_id</td>
+<td>BIGINT</td>
+<td>关联 <a href="http://origin.id">origin.id</a></td>
+</tr>
+<tr>
+<td>name</td>
+<td>VARCHAR(100)</td>
+<td>特产名称</td>
+</tr>
+<tr>
+<td>category</td>
+<td>VARCHAR(50)</td>
+<td>分类</td>
+</tr>
+<tr>
+<td>cultural_info</td>
+<td>TEXT</td>
+<td>文化信息</td>
+</tr>
+<tr>
+<td>season_tag</td>
+<td>VARCHAR(50)</td>
+<td>季节标签</td>
+</tr>
+<tr>
+<td>cover_img</td>
+<td>VARCHAR(255)</td>
+<td>封面图片</td>
+</tr>
+<tr>
+<td>is_landing</td>
+<td>TINYINT</td>
+<td>是否上架（0-下架，1-上架）</td>
+</tr>
+<tr>
+<td>created_at</td>
+<td>DATETIME</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>updated_at</td>
+<td>DATETIME</td>
+<td>更新时间</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="三溯源码规范严格按-trace_solutionhtml">三、溯源码规范（严格按 trace_solution.html）</h2>
+<h3 id="31-溯源码命名规则">3.1 溯源码命名规则</h3>
+<pre><code>TP - {省份缩写} - {品类缩写} - {年份} - {6位随机数}
+</code></pre>
+<p><strong>示例：</strong> <code>TP-ZJ-LJ-2024-042138</code></p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>含义</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TP</code></td>
+<td>前缀</td>
+<td>固定为 TP</td>
+</tr>
+<tr>
+<td><code>ZJ</code></td>
+<td>省份缩写</td>
+<td>浙江</td>
+</tr>
+<tr>
+<td><code>LJ</code></td>
+<td>品类缩写</td>
+<td>龙井</td>
+</tr>
+<tr>
+<td><code>2024</code></td>
+<td>生产年份</td>
+<td>四位年份</td>
+</tr>
+<tr>
+<td><code>042138</code></td>
+<td>随机批次号</td>
+<td>6位数字，保证唯一性</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-省份品类缩写字典">3.2 省份/品类缩写字典</h3>
+<p><strong>省份：</strong> 北京→BJ、天津→TJ、河北→HB、浙江→ZJ、江苏→JS、上海→SH 等34个省市</p>
+<p><strong>品类：</strong> 龙井茶→LJ、碧螺春→BLC、铁观音→TG、普洱茶→PE、茶叶→CY 等</p>
+<hr>
+<h2 id="四溯源查询流程严格按-trace_solutionhtml">四、溯源查询流程（严格按 trace_solution.html）</h2>
+<h3 id="41-查询链路6步">4.1 查询链路（6步）</h3>
+<pre><code>1. 消费者触发查询（扫描二维码 / 手动输入溯源码）
+        ↓
+2. 后端优先查 Redis 缓存（key: trace:{traceCode}）
+        ↓（未命中）
+3. 查询 MySQL：trace_record WHERE trace_code = ? AND audit_status = 'pass'
+        ↓
+4. 联查 product、merchant 表，组装完整数据
+        ↓
+5. 写入 Redis 缓存（TTL=24h），返回前端
+        ↓
+6. 前端按六层结构渲染：产品 → 产地 → 生产 → 加工 → 质检 → 流通
+</code></pre>
+<h3 id="42-响应结构6层嵌套">4.2 响应结构（6层嵌套）</h3>
+<table>
+<thead>
+<tr>
+<th>层级</th>
+<th>字段</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>traceCode</td>
+<td>溯源码</td>
+</tr>
+<tr>
+<td>product</td>
+<td>name, spec, merchantName, coverImg</td>
+</tr>
+<tr>
+<td>origin</td>
+<td>province, city, county, address, longitude, latitude</td>
+</tr>
+<tr>
+<td>production</td>
+<td>produceDate, producer, rawMaterial</td>
+</tr>
+<tr>
+<td>process</td>
+<td>factory, processDate, processDesc</td>
+</tr>
+<tr>
+<td>inspection</td>
+<td>org, inspectDate, result, reportUrl</td>
+</tr>
+<tr>
+<td>logistics</td>
+<td>warehouseIn, warehouseOut, logisticsInfo</td>
+</tr>
+</tbody>
+</table>
+<h3 id="43-缓存策略">4.3 缓存策略</h3>
+<table>
+<thead>
+<tr>
+<th>缓存Key</th>
+<th>TTL</th>
+<th>接口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>trace:{traceCode}</code></td>
+<td>24小时</td>
+<td>溯源查询</td>
+</tr>
+<tr>
+<td><code>trace:stats</code></td>
+<td>1小时</td>
+<td>溯源统计</td>
+</tr>
+<tr>
+<td><code>stats:specialty:map</code></td>
+<td>2小时</td>
+<td>全国特产分布地图</td>
+</tr>
+<tr>
+<td><code>stats:sales:region:{region}</code></td>
+<td>1小时</td>
+<td>地区销售数据</td>
+</tr>
+<tr>
+<td><code>stats:trace:region:{region}</code></td>
+<td>1小时</td>
+<td>地区溯源数据</td>
+</tr>
+<tr>
+<td><code>product:list:{page}:...filters</code></td>
+<td>5分钟</td>
+<td>商品列表（实际实现按分页和筛选条件区分缓存键）</td>
+</tr>
+<tr>
+<td><code>product:detail:{id}</code></td>
+<td>10分钟</td>
+<td>商品详情</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="五接口设计严格按框架文档">五、接口设计（严格按框架文档）</h2>
+<h3 id="50-接口总览">5.0 接口总览</h3>
+<p><strong>Swagger 地址：</strong> <code>https://82.156.12.252/tph/swagger-ui/index.html</code></p>
+<p><strong>总计：约 57 个接口</strong></p>
+<table>
+<thead>
+<tr>
+<th>分组</th>
+<th>前缀</th>
+<th>接口数</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>认证管理</td>
+<td><code>/tph/auth</code></td>
+<td>6</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>商品管理</td>
+<td><code>/tph/api/v1/products</code></td>
+<td>5</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>溯源C端</td>
+<td><code>/tph/api/v1/trace</code></td>
+<td>3</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>溯源管理端</td>
+<td><code>/tph/api/v1/trace/admin</code></td>
+<td>4</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>分类</td>
+<td><code>/tph/api/v1/categories</code></td>
+<td>1</td>
+<td>⚠️ 框架已搭建</td>
+</tr>
+<tr>
+<td>特产C端</td>
+<td><code>/tph/api/v1/specialties</code></td>
+<td>2</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>地图</td>
+<td><code>/tph/api/v1/map</code></td>
+<td>2</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>统计</td>
+<td><code>/tph/api/v1/stats</code></td>
+<td>3</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>商家入驻</td>
+<td><code>/tph/api/v1/merchant</code></td>
+<td>4</td>
+<td>⚠️ 框架已搭建，业务未实现</td>
+</tr>
+<tr>
+<td>用户中心</td>
+<td><code>/tph/api/v1/user</code></td>
+<td>4</td>
+<td>⚠️ 框架已搭建，业务未实现</td>
+</tr>
+<tr>
+<td>购物车</td>
+<td><code>/tph/api/v1/cart</code></td>
+<td>4</td>
+<td>⚠️ 框架已搭建，业务未实现</td>
+</tr>
+<tr>
+<td>订单</td>
+<td><code>/tph/api/v1/orders</code></td>
+<td>7</td>
+<td>⚠️ 框架已搭建，业务未实现</td>
+</tr>
+<tr>
+<td>地址</td>
+<td><code>/tph/api/v1/addresses</code></td>
+<td>4</td>
+<td>⚠️ 框架已搭建，业务未实现</td>
+</tr>
+<tr>
+<td>管理后台</td>
+<td><code>/tph/api/v1/admin/*</code></td>
+<td>~10</td>
+<td>⚠️ 框架已搭建，业务未实现</td>
+</tr>
+<tr>
+<td>系统管理</td>
+<td><code>/tph/health</code></td>
+<td>1</td>
+<td>✅ 已实现</td>
+</tr>
+</tbody>
+</table>
+<h3 id="51-张圯炫负责的接口">5.1 张圯炫负责的接口</h3>
+<h4 id="溯源模块-tphapiv1trace">溯源模块 <code>/tph/api/v1/trace</code></h4>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>方法</th>
+<th>路径</th>
+<th>描述</th>
+<th>权限</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>查询溯源</td>
+<td>GET</td>
+<td><code>/api/v1/trace/{traceCode}</code></td>
+<td>消费者查询溯源全链路（扫码/手动输码）</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>商品溯源列表</td>
+<td>GET</td>
+<td><code>/api/v1/trace/product/{productId}</code></td>
+<td>获取某商品全部溯源批次列表</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>录入溯源</td>
+<td>POST</td>
+<td><code>/api/v1/trace</code></td>
+<td>商家录入溯源信息，系统返回溯源码与二维码URL</td>
+<td>商家</td>
+<td>✅ 已实现</td>
+</tr>
+</tbody>
+</table>
+<h4 id="溯源模块-管理端-tphapiv1traceadmin">溯源模块-管理端 <code>/tph/api/v1/trace/admin</code></h4>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>方法</th>
+<th>路径</th>
+<th>描述</th>
+<th>权限</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>待审核列表</td>
+<td>GET</td>
+<td><code>/api/v1/trace/admin/pending</code></td>
+<td>分页查询待审核溯源记录</td>
+<td>管理员</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>审核详情</td>
+<td>GET</td>
+<td><code>/api/v1/trace/admin/{id}</code></td>
+<td>查看某条溯源记录详情</td>
+<td>管理员</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>所有溯源列表</td>
+<td>GET</td>
+<td><code>/api/v1/trace/admin/list</code></td>
+<td>分页查询所有溯源记录</td>
+<td>管理员</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>审核溯源</td>
+<td>PUT</td>
+<td><code>/api/v1/trace/admin/audit</code></td>
+<td>管理员审核溯源信息</td>
+<td>管理员</td>
+<td>✅ 已实现</td>
+</tr>
+</tbody>
+</table>
+<h4 id="地图--统计模块">地图 &amp; 统计模块</h4>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>方法</th>
+<th>路径</th>
+<th>描述</th>
+<th>权限</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>特产分布地图</td>
+<td>GET</td>
+<td><code>/api/v1/map/specialties</code></td>
+<td>获取地图特产分布数据</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>节气推荐</td>
+<td>GET</td>
+<td><code>/api/v1/map/season-recommend</code></td>
+<td>根据当前节气返回推荐特产列表</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>溯源统计</td>
+<td>GET</td>
+<td><code>/api/v1/stats/trace</code></td>
+<td>溯源数据统计（总数/通过/待审/驳回）</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>地区溯源地图</td>
+<td>GET</td>
+<td><code>/api/v1/stats/trace/by-region</code></td>
+<td>各省份溯源记录数（ECharts用）</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>地区销售地图</td>
+<td>GET</td>
+<td><code>/api/v1/stats/sales/by-region</code></td>
+<td>各省份销售数据（ECharts用）</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+</tbody>
+</table>
+<h4 id="商家--管理后台️-部分待实现">商家 &amp; 管理后台（⚠️ 部分待实现）</h4>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>方法</th>
+<th>路径</th>
+<th>描述</th>
+<th>权限</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>待审核商家列表</td>
+<td>GET</td>
+<td><code>/api/v1/admin/merchant/pending</code></td>
+<td>分页查询待审核商家</td>
+<td>管理员</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>商家详情</td>
+<td>GET</td>
+<td><code>/api/v1/admin/merchant/{id}</code></td>
+<td>查看商家信息</td>
+<td>管理员</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>商家审核</td>
+<td>PUT</td>
+<td><code>/api/v1/admin/merchant/{id}/audit</code></td>
+<td>管理员审核商家入驻申请</td>
+<td>管理员</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>所有商家列表</td>
+<td>GET</td>
+<td><code>/api/v1/admin/merchant/list</code></td>
+<td>分页查询所有商家</td>
+<td>管理员</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>平台数据看板</td>
+<td>GET</td>
+<td><code>/api/v1/admin/stats</code></td>
+<td>平台数据看板（用户量/交易量/热门特产）</td>
+<td>管理员</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>新增特产</td>
+<td>POST</td>
+<td><code>/api/v1/admin/specialties</code></td>
+<td>管理员维护特产库</td>
+<td>管理员</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>编辑特产</td>
+<td>PUT</td>
+<td><code>/api/v1/admin/specialties/{id}</code></td>
+<td>管理员编辑特产文化介绍、节气关联、地图坐标</td>
+<td>管理员</td>
+<td>⚠️ 待实现</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-乃吉木丁负责的接口">5.2 乃吉木丁负责的接口</h3>
+<h4 id="用户认证-tphauth">用户认证 <code>/tph/auth</code></h4>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>方法</th>
+<th>路径</th>
+<th>描述</th>
+<th>权限</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>发送注册验证码</td>
+<td>POST</td>
+<td><code>/auth/register/code</code></td>
+<td>用户通过邮箱获取注册验证码</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>用户注册</td>
+<td>POST</td>
+<td><code>/auth/register</code></td>
+<td>邮箱验证码注册，需先获取验证码再注册</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>用户登录</td>
+<td>POST</td>
+<td><code>/auth/login</code></td>
+<td>登录，返回 JWT Token</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>获取当前用户信息</td>
+<td>GET</td>
+<td><code>/auth/me</code></td>
+<td>获取当前登录用户信息</td>
+<td>用户</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>刷新Token</td>
+<td>POST</td>
+<td><code>/auth/refresh</code></td>
+<td>刷新 JWT Token</td>
+<td>用户</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>用户登出</td>
+<td>POST</td>
+<td><code>/auth/logout</code></td>
+<td>用户登出</td>
+<td>用户</td>
+<td>✅ 已实现</td>
+</tr>
+</tbody>
+</table>
+<h4 id="商品管理-tphapiv1products">商品管理 <code>/tph/api/v1/products</code></h4>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>方法</th>
+<th>路径</th>
+<th>描述</th>
+<th>权限</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>商品分页列表</td>
+<td>GET</td>
+<td><code>/api/v1/products</code></td>
+<td>商品列表（关键词、特产ID筛选）</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>商品详情</td>
+<td>GET</td>
+<td><code>/api/v1/products/{id}</code></td>
+<td>商品详情（含溯源摘要入口）</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>创建商品</td>
+<td>POST</td>
+<td><code>/api/v1/products</code></td>
+<td>商家上架新商品</td>
+<td>商家</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>更新商品</td>
+<td>PUT</td>
+<td><code>/api/v1/products/{id}</code></td>
+<td>商家修改商品信息（价格/库存/描述）</td>
+<td>商家</td>
+<td>✅ 已实现</td>
+</tr>
+<tr>
+<td>删除商品</td>
+<td>DELETE</td>
+<td><code>/api/v1/products/{id}</code></td>
+<td>商家删除自有商品，管理员可越权删除</td>
+<td>商家/管理员</td>
+<td>✅ 已实现</td>
+</tr>
+</tbody>
+</table>
+<h4 id="购物车--订单️-待实现">购物车 &amp; 订单（⚠️ 待实现）</h4>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>方法</th>
+<th>路径</th>
+<th>描述</th>
+<th>权限</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>加入购物车</td>
+<td>POST</td>
+<td><code>/api/v1/cart</code></td>
+<td>加入购物车</td>
+<td>消费者</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>购物车列表</td>
+<td>GET</td>
+<td><code>/api/v1/cart</code></td>
+<td>查看购物车列表</td>
+<td>消费者</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>创建订单</td>
+<td>POST</td>
+<td><code>/api/v1/orders</code></td>
+<td>创建订单并发起支付</td>
+<td>消费者</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>订单详情</td>
+<td>GET</td>
+<td><code>/api/v1/orders/{id}</code></td>
+<td>查询订单详情与物流状态</td>
+<td>消费者</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>商家发货</td>
+<td>PUT</td>
+<td><code>/api/v1/orders/{id}/ship</code></td>
+<td>商家确认发货，填写物流单号</td>
+<td>商家</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>评价订单</td>
+<td>POST</td>
+<td><code>/api/v1/orders/{id}/review</code></td>
+<td>消费者评价已完成订单</td>
+<td>消费者</td>
+<td>⚠️ 待实现</td>
+</tr>
+</tbody>
+</table>
+<h4 id="商家入驻️-待实现">商家入驻（⚠️ 待实现）</h4>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>方法</th>
+<th>路径</th>
+<th>描述</th>
+<th>权限</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>商家入驻申请</td>
+<td>POST</td>
+<td><code>/api/v1/merchant/apply</code></td>
+<td>提交商家入驻申请（营业执照、资质）</td>
+<td>用户</td>
+<td>⚠️ 待实现</td>
+</tr>
+<tr>
+<td>商家经营数据</td>
+<td>GET</td>
+<td><code>/api/v1/merchant/stats</code></td>
+<td>商家查看经营数据（销量/收入/浏览量）</td>
+<td>商家</td>
+<td>⚠️ 待实现</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53-系统管理">5.3 系统管理</h3>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>方法</th>
+<th>路径</th>
+<th>描述</th>
+<th>权限</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>健康检查</td>
+<td>GET</td>
+<td><code>/health</code></td>
+<td>健康检查端点</td>
+<td>公开</td>
+<td>✅ 已实现</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="六开发任务分解">六、开发任务分解</h2>
+<h3 id="张圯炫任务">张圯炫任务</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> 数据库：确认 trace_record 建表 SQL</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Entity：TraceRecord、Product、Specialty、Merchant、Origin</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Mapper：TraceRecordMapper、OriginMapper、SpecialtyMapper</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Service：溯源码生成、录入、查询（含 Redis 缓存）、审核</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Controller：溯源 C 端接口（录入/查询/商品溯源列表）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Controller：溯源管理端接口（审核/列表/待审核）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Swagger：所有接口 @Operation 标注</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> SecurityConfig：溯源查询接口、特产接口、地图统计接口放行</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Controller：地图数据接口（ECharts，5个接口全部实现）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Service：MapServiceImpl（含 Redis 2h/1h 缓存）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Service：StatsServiceImpl（含 Redis 1h 缓存）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Service：SpecialtyServiceImpl（含 Redis 2h 缓存 + 联查origin/culture）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> ⚠️ 溯源联查修复：省份品类从商品表真实联查，商品名/商家名不再硬编码，商品校验已解开</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 商家入驻链路（申请/审核通过/商家资料/角色流转）—— 溯源录入前置条件</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 商家管理端接口（待审核商家列表/审核/详情）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 平台数据看板接口</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 特产管理接口（新增/编辑）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 测试：录入 → 审核通过 → 查询完整链路（需先解决商家入驻）</li>
+</ul>
+<h3 id="乃吉木丁任务">乃吉木丁任务</h3>
+<ul class="contains-task-list">
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> 数据库：user/merchant/product/orders/order_item/cart_item/address 表建表 SQL</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Entity：User、Merchant、Product、Orders、OrderItem、CartItem、Address</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Mapper：各 Entity Mapper（已完成 <code>ProductMapper</code>、<code>MerchantMapper</code>）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Service：用户注册/登录（JWT）、商品 CRUD</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Controller：用户认证接口（6个）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Controller：商品管理接口（5个）</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox" checked=""type="checkbox"> Security：JWT 鉴权、接口拦截</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 购物车逻辑接口</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 订单流转及状态更新接口</li>
+<li class="task-list-item enabled"><input class="task-list-item-checkbox"type="checkbox"> 商家入驻接口</li>
+</ul>
+<hr>
+<h2 id="七git-分支与提交规范">七、Git 分支与提交规范</h2>
+<h3 id="分支管理">分支管理</h3>
+<table>
+<thead>
+<tr>
+<th>分支</th>
+<th>负责人</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dev-zyx</code></td>
+<td>张圯炫</td>
+<td>地图接口 + 溯源模块 + 商家审核</td>
+</tr>
+<tr>
+<td><code>dev-njmd</code></td>
+<td>乃吉木丁</td>
+<td>用户 + 商品 + 购物车 + 订单</td>
+</tr>
+</tbody>
+</table>
+<h3 id="开发流程每次开发前">开发流程（每次开发前）</h3>
+<pre><code class="language-bash">git checkout main
+git pull origin
+git checkout dev-zyx
+git merge main
+...开发...
+git add .
+git commit -m <span class="hljs-string">&quot;xxx&quot;</span>
+git push origin dev-zyx
+</code></pre>
+<h3 id="提-pr-流程">提 PR 流程</h3>
+<p>开发完成后，去 GitHub 提 Pull Request：<code>dev-zyx → main</code></p>
+<h3 id="提交规范">提交规范</h3>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>feat(trace)</td>
+<td>添加溯源查询接口及Redis缓存</td>
+</tr>
+<tr>
+<td>feat(trace)</td>
+<td>添加溯源信息录入接口</td>
+</tr>
+<tr>
+<td>feat(stats)</td>
+<td>添加全国特产分布地图接口</td>
+</tr>
+<tr>
+<td>feat(merchant)</td>
+<td>添加商家审核管理接口</td>
+</tr>
+<tr>
+<td>feat(user)</td>
+<td>添加用户注册登录接口</td>
+</tr>
+<tr>
+<td>feat(order)</td>
+<td>添加订单创建与状态流转</td>
+</tr>
+<tr>
+<td>perf(cache)</td>
+<td>溯源查询接口集成24小时Redis缓存</td>
+</tr>
+<tr>
+<td>docs(swagger)</td>
+<td>更新溯源模块接口文档</td>
+</tr>
+<tr>
+<td>docs</td>
+<td>文档更新</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><em>计划制定时间：2026-05-08</em>
+<em>数据库设计来源：数据库设计.pdf</em>
+<em>接口规范来源：trace_solution.html</em></p>
+
+            
+            
+        </body>
+        </html>
