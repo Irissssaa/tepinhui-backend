@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "商品管理", description = "商品列表、详情与商家商品维护")
+@Tag(name = "商品-公开与商家侧接口", description = "公开商品查询与商家商品维护接口")
 @RestController
 @RequestMapping("/api/v1/products")
 @RequiredArgsConstructor

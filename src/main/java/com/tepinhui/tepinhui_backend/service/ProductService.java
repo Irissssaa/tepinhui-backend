@@ -1,6 +1,7 @@
 package com.tepinhui.tepinhui_backend.service;
 
 import com.tepinhui.tepinhui_backend.dto.product.ProductCreateRequest;
+import com.tepinhui.tepinhui_backend.dto.product.ProductAuditRequest;
 import com.tepinhui.tepinhui_backend.dto.product.ProductQueryRequest;
 import com.tepinhui.tepinhui_backend.dto.product.ProductUpdateRequest;
 import com.tepinhui.tepinhui_backend.vo.product.ProductDetailVO;
@@ -32,4 +33,9 @@ public interface ProductService {
      * 商家删除自有商品，管理员可越权删除
      */
     void deleteProduct(Long id);
+
+    /**
+     * 管理员审核商品上架申请
+     */
+    void auditProduct(Long id, ProductAuditRequest request);
 }

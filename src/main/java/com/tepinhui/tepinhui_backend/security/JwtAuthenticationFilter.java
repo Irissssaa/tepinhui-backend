@@ -1,6 +1,8 @@
 package com.tepinhui.tepinhui_backend.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tepinhui.tepinhui_backend.common.Constants;
+import com.tepinhui.tepinhui_backend.common.Result;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,6 +20,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Slf4j
@@ -27,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -34,14 +38,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String token = extractToken(request);
 
-        if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
+        if (StringUtils.hasText(token) && !jwtUtil.validateToken(token)) {
+            writeUnauthorized(response, "Token无效或已过期");
+            return;
+        }
+
+        if (StringUtils.hasText(token)) {
             Claims claims = jwtUtil.parseToken(token);
             String type = claims.get("type", String.class);
 
             if ("access".equals(type)) {
-                // 检查 token 是否在黑名单中
+                // 命中黑名单的 token 直接拒绝（已登出/已撤销）
                 if (Boolean.TRUE.equals(redisTemplate.hasKey(Constants.TOKEN_BLACKLIST_PREFIX + token))) {
-                    filterChain.doFilter(request, response);
+                    writeUnauthorized(response, "Token已被注销");
                     return;
                 }
 
@@ -60,6 +69,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType("application/json");
+        objectMapper.writeValue(response.getWriter(), Result.error(401, message));
     }
 
     private String extractToken(HttpServletRequest request) {

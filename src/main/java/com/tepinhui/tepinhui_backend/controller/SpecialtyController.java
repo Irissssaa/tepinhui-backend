@@ -1,0 +1,46 @@
+package com.tepinhui.tepinhui_backend.controller;
+
+import com.tepinhui.tepinhui_backend.common.Result;
+import com.tepinhui.tepinhui_backend.service.SpecialtyService;
+import com.tepinhui.tepinhui_backend.vo.specialty.SpecialtyDetailVO;
+import com.tepinhui.tepinhui_backend.vo.specialty.SpecialtyListVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@Tag(name = "特产-公开接口", description = "公开特产列表与详情查询接口")
+@RestController
+@RequestMapping("/api/v1/specialties")
+@RequiredArgsConstructor
+public class SpecialtyController {
+
+    private final SpecialtyService specialtyService;
+
+    @GetMapping
+    @Operation(
+        summary = "特产列表（未实现）",
+        description = "（未实现：当前返回空列表占位）分页能力和真实筛选逻辑后续补齐，供前端先对接列表结构"
+    )
+    public Result<List<SpecialtyListVO>> listSpecialties() {
+        return Result.success(specialtyService.listSpecialties());
+    }
+
+    @GetMapping("/{id}")
+    @Operation(
+        summary = "特产详情（未实现）",
+        description = "根据特产ID查询详情、产地和文化内容；当前接口仅保留契约，业务逻辑待实现"
+    )
+    public Result<SpecialtyDetailVO> getSpecialtyDetail(
+        @Parameter(description = "特产ID", required = true)
+        @PathVariable Long id
+    ) {
+        return Result.success(specialtyService.getSpecialtyDetail(id));
+    }
+}

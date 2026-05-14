@@ -1,6 +1,8 @@
 package com.tepinhui.tepinhui_backend.controller;
 
 import com.tepinhui.tepinhui_backend.config.SecurityConfig;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tepinhui.tepinhui_backend.config.ResultHttpStatusAdvice;
 import com.tepinhui.tepinhui_backend.common.Role;
 import com.tepinhui.tepinhui_backend.common.UserStatus;
 import com.tepinhui.tepinhui_backend.entity.User;
@@ -42,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ContextConfiguration(classes = {
         AuthController.class,
         GlobalExceptionHandler.class,
+        ResultHttpStatusAdvice.class,
         SecurityConfig.class,
         AuthControllerTest.NoOpJwtFilterConfig.class
 })
@@ -97,7 +100,7 @@ class AuthControllerTest {
                                   "email": " user@example.com "
                                 }
                                 """))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("验证码发送过于频繁，请42秒后重试"));
 
@@ -115,7 +118,7 @@ class AuthControllerTest {
                                   "email": "user@example.com"
                                 }
                                 """))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("邮箱已注册"));
 
@@ -191,7 +194,7 @@ class AuthControllerTest {
                                   "code": "123456"
                                 }
                                 """))
-                .andExpect(status().isOk())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("验证码错误或已过期"));
     }
@@ -221,8 +224,10 @@ class AuthControllerTest {
     static class NoOpJwtFilterConfig {
 
         @Bean
-        JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil, StringRedisTemplate redisTemplate) {
-            return new JwtAuthenticationFilter(jwtUtil, redisTemplate) {
+        JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil,
+                                                        StringRedisTemplate redisTemplate,
+                                                        ObjectMapper objectMapper) {
+            return new JwtAuthenticationFilter(jwtUtil, redisTemplate, objectMapper) {
                 @Override
                 protected void doFilterInternal(HttpServletRequest request,
                                                 HttpServletResponse response,
