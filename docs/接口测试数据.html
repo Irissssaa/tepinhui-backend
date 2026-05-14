@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>&#x7279;&#x54c1;&#x6c47;&#x63a5;&#x53e3;&#x6d4b;&#x8bd5;&#x6570;&#x636e;&#xff08;&#x5f20;&#x572f;&#x70ab;&#x8d1f;&#x8d23;&#xff09;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="特品汇接口测试数据张圯炫负责">特品汇接口测试数据（张圯炫负责）</h1>
+<h2 id="时间字段格式说明">时间字段格式说明</h2>
+<table>
+<thead>
+<tr>
+<th>字段类型</th>
+<th>格式</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DATE</code>（日期）</td>
+<td><code>yyyy-MM-dd</code></td>
+<td><code>2024-04-15</code></td>
+</tr>
+<tr>
+<td><code>DATETIME</code>（日期时间）</td>
+<td><code>yyyy-MM-ddTHH:mm:ss</code></td>
+<td><code>2024-04-15T10:30:00</code></td>
+</tr>
+<tr>
+<td>注意</td>
+<td>T 是固定字符，连接日期和时间部分</td>
+<td>——</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="一溯源模块-c端-tphapiv1trace">一、溯源模块 C端 <code>/tph/api/v1/trace</code></h2>
+<blockquote>
+<p>查询接口公开，录入接口需商家角色。</p>
+</blockquote>
+<h3 id="11-查询溯源公开">1.1 查询溯源（公开）</h3>
+<pre><code>GET /api/v1/trace/{traceCode}
+</code></pre>
+<p><strong>示例：</strong></p>
+<pre><code>GET /api/v1/trace/TP-ZJ-LJ-2024-000001
+</code></pre>
+<h3 id="12-商品溯源列表公开">1.2 商品溯源列表（公开）</h3>
+<pre><code>GET /api/v1/trace/product/{productId}
+</code></pre>
+<p><strong>示例：</strong></p>
+<pre><code>GET /api/v1/trace/product/1
+</code></pre>
+<h3 id="13-录入溯源商家">1.3 录入溯源（商家）</h3>
+<pre><code>POST /api/v1/trace
+Header: Authorization: Bearer ***
+Content-Type: application/json
+
+{
+    &quot;productId&quot;: 1,
+    &quot;batchNo&quot;: &quot;B20240415001&quot;,
+    &quot;originAddress&quot;: &quot;浙江省杭州市西湖区龙井路88号&quot;,
+    &quot;longitude&quot;: 120.129870,
+    &quot;latitude&quot;: 30.251830,
+    &quot;produceDate&quot;: &quot;2024-04-05&quot;,
+    &quot;producerName&quot;: &quot;杭州狮峰龙井茶业有限公司&quot;,
+    &quot;rawMaterial&quot;: &quot;鲜叶（龙井43号品种）&quot;,
+    &quot;processFactory&quot;: &quot;杭州龙井茶厂&quot;,
+    &quot;processDate&quot;: &quot;2024-04-06&quot;,
+    &quot;processDesc&quot;: &quot;摊放→青锅→回潮→辉锅→整理，共6道工序&quot;,
+    &quot;inspectOrg&quot;: &quot;浙江省茶叶质量检测中心&quot;,
+    &quot;inspectDate&quot;: &quot;2024-04-08&quot;,
+    &quot;inspectResult&quot;: &quot;合格&quot;,
+    &quot;inspectReportUrl&quot;: &quot;https://example.com/reports/inspection2024.pdf&quot;,
+    &quot;warehouseInTime&quot;: &quot;2024-04-09T08:00:00&quot;,
+    &quot;warehouseOutTime&quot;: &quot;2024-04-10T14:30:00&quot;,
+    &quot;logisticsInfo&quot;: &quot;从杭州仓出发，经顺丰速运至上海仓，配送至客户&quot;
+}
+</code></pre>
+<p><strong>溯源码格式：</strong> <code>TP-{省份}-{品类}-{年份}-{6位随机数}</code></p>
+<p><strong>省份缩写参考：</strong> 浙江→ZJ、江苏→JS、安徽→AH、福建→FJ、广东→GD、四川→SC 等</p>
+<p><strong>品类缩写参考：</strong> 龙井→LJ、碧螺春→BLC、普洱→PE、乌龙→WL、白茶→BC 等</p>
+<hr>
+<h2 id="二溯源模块-管理端-tphapiv1traceadmin">二、溯源模块 管理端 <code>/tph/api/v1/trace/admin</code></h2>
+<blockquote>
+<p>需要管理员角色。</p>
+</blockquote>
+<h3 id="21-待审核列表">2.1 待审核列表</h3>
+<pre><code>GET /api/v1/trace/admin/pending?page=1&amp;size=10
+Header: Authorization: Bearer ***
+</code></pre>
+<h3 id="22-审核详情">2.2 审核详情</h3>
+<pre><code>GET /api/v1/trace/admin/{id}
+Header: Authorization: Bearer ***
+</code></pre>
+<h3 id="23-所有溯源列表">2.3 所有溯源列表</h3>
+<pre><code>GET /api/v1/trace/admin/list?page=1&amp;size=10
+Header: Authorization: Bearer ***
+</code></pre>
+<h3 id="24-审核溯源">2.4 审核溯源</h3>
+<pre><code>PUT /api/v1/trace/admin/audit
+Header: Authorization: Bearer ***
+Content-Type: application/json
+
+{
+    &quot;id&quot;: 1,
+    &quot;status&quot;: &quot;pass&quot;,
+    &quot;remark&quot;: &quot;信息核实无误，审核通过&quot;
+}
+</code></pre>
+<p><strong>status 可选值：</strong> <code>pass</code>（通过）、<code>reject</code>（拒绝）</p>
+<hr>
+<h2 id="三特产模块-tphapiv1specialties">三、特产模块 <code>/tph/api/v1/specialties</code></h2>
+<h3 id="31-特产列表公开">3.1 特产列表（公开）</h3>
+<pre><code>GET /api/v1/specialties
+</code></pre>
+<h3 id="32-特产详情公开">3.2 特产详情（公开）</h3>
+<pre><code>GET /api/v1/specialties/{id}
+</code></pre>
+<p><strong>示例：</strong></p>
+<pre><code>GET /api/v1/specialties/1
+</code></pre>
+<hr>
+<h2 id="四地图模块-tphapiv1map">四、地图模块 <code>/tph/api/v1/map</code></h2>
+<h3 id="41-特产分布地图公开">4.1 特产分布地图（公开）</h3>
+<pre><code>GET /api/v1/map/specialties
+</code></pre>
+<p><strong>返回说明：</strong> 每条记录包含 <code>region</code>（省份）、<code>specialtyName</code>（特产名）、<code>count</code>（该省特产数量）、<code>longitude</code>、<code>latitude</code></p>
+<h3 id="42-节气推荐公开">4.2 节气推荐（公开）</h3>
+<pre><code>GET /api/v1/map/season-recommend
+</code></pre>
+<p><strong>返回说明：</strong> 根据当前节气自动匹配，返回推荐特产列表，<code>reason</code> 字段标注当前节气</p>
+<hr>
+<h2 id="五统计模块-tphapiv1stats">五、统计模块 <code>/tph/api/v1/stats</code></h2>
+<h3 id="51-溯源统计总览公开">5.1 溯源统计总览（公开）</h3>
+<pre><code>GET /api/v1/stats/trace
+</code></pre>
+<p><strong>返回说明：</strong> 返回 <code>totalTraceCount</code>（总数）、<code>passedTraceCount</code>（通过）、<code>pendingTraceCount</code>（待审）、<code>rejectedTraceCount</code>（驳回）</p>
+<h3 id="52-区域溯源统计公开">5.2 区域溯源统计（公开）</h3>
+<pre><code>GET /api/v1/stats/trace/by-region
+GET /api/v1/stats/trace/by-region?region=浙江
+</code></pre>
+<p><strong>返回说明：</strong> 各省份溯源记录数，支持按省份筛选</p>
+<h3 id="53-区域销售统计公开">5.3 区域销售统计（公开）</h3>
+<pre><code>GET /api/v1/stats/sales/by-region
+GET /api/v1/stats/sales/by-region?region=广东
+</code></pre>
+<p><strong>返回说明：</strong> 各省份销售数据，支持按省份筛选</p>
+<hr>
+<h2 id="附测试数据初始化sql">附：测试数据初始化SQL</h2>
+<blockquote>
+<p>补充 <code>specialty</code> 和 <code>origin</code> 表测试数据，确保地图和特产接口返回非空结果。</p>
+</blockquote>
+<pre><code class="language-sql"><span class="hljs-comment">-- 产地数据</span>
+<span class="hljs-keyword">INSERT</span> <span class="hljs-keyword">INTO</span> origin (province_name, city_name, county_name, geo_code, longitude, latitude, address) <span class="hljs-keyword">VALUES</span>
+(<span class="hljs-string">&#x27;浙江&#x27;</span>, <span class="hljs-string">&#x27;杭州&#x27;</span>, <span class="hljs-string">&#x27;西湖区&#x27;</span>, <span class="hljs-string">&#x27;330102&#x27;</span>, <span class="hljs-number">120.155070</span>, <span class="hljs-number">30.274084</span>, <span class="hljs-string">&#x27;杭州市西湖区龙井路88号&#x27;</span>),
+(<span class="hljs-string">&#x27;浙江&#x27;</span>, <span class="hljs-string">&#x27;杭州&#x27;</span>, <span class="hljs-string">&#x27;余杭区&#x27;</span>,  <span class="hljs-string">&#x27;330110&#x27;</span>, <span class="hljs-number">119.945000</span>, <span class="hljs-number">30.265000</span>, <span class="hljs-string">&#x27;杭州市余杭区径山镇&#x27;</span>),
+(<span class="hljs-string">&#x27;福建&#x27;</span>, <span class="hljs-string">&#x27;泉州&#x27;</span>, <span class="hljs-string">&#x27;安溪县&#x27;</span>,  <span class="hljs-string">&#x27;350524&#x27;</span>, <span class="hljs-number">118.000000</span>, <span class="hljs-number">25.050000</span>, <span class="hljs-string">&#x27;泉州市安溪县&#x27;</span>),
+(<span class="hljs-string">&#x27;云南&#x27;</span>, <span class="hljs-string">&#x27;昆明&#x27;</span>, <span class="hljs-string">&#x27;官渡区&#x27;</span>,  <span class="hljs-string">&#x27;530103&#x27;</span>, <span class="hljs-number">102.835000</span>, <span class="hljs-number">25.040000</span>, <span class="hljs-string">&#x27;昆明市官渡区&#x27;</span>),
+(<span class="hljs-string">&#x27;江苏&#x27;</span>, <span class="hljs-string">&#x27;苏州&#x27;</span>, <span class="hljs-string">&#x27;吴中区&#x27;</span>,  <span class="hljs-string">&#x27;320506&#x27;</span>, <span class="hljs-number">120.632000</span>, <span class="hljs-number">31.262000</span>, <span class="hljs-string">&#x27;苏州市吴中区东山镇&#x27;</span>);
+
+<span class="hljs-comment">-- 特产数据（is_landing = 1 表示上架，season_tag 匹配节气如&quot;谷雨&quot;/&quot;明前&quot;等）</span>
+<span class="hljs-keyword">INSERT</span> <span class="hljs-keyword">INTO</span> specialty (origin_id, name, category, cultural_info, season_tag, cover_img, is_landing) <span class="hljs-keyword">VALUES</span>
+(<span class="hljs-number">1</span>, <span class="hljs-string">&#x27;西湖龙井&#x27;</span>, <span class="hljs-string">&#x27;绿茶&#x27;</span>, <span class="hljs-string">&#x27;西湖龙井，中国十大名茶之一，产于杭州西湖畔。&#x27;</span>, <span class="hljs-string">&#x27;谷雨&#x27;</span>, <span class="hljs-string">&#x27;https://example.com/img/xihulongjing.jpg&#x27;</span>, <span class="hljs-number">1</span>),
+(<span class="hljs-number">2</span>, <span class="hljs-string">&#x27;径山茶&#x27;</span>, <span class="hljs-string">&#x27;绿茶&#x27;</span>, <span class="hljs-string">&#x27;径山茶源于唐盛于宋，是日本茶道文化的发源地。&#x27;</span>, <span class="hljs-string">&#x27;明前&#x27;</span>, <span class="hljs-string">&#x27;https://example.com/img/jingshantea.jpg&#x27;</span>, <span class="hljs-number">1</span>),
+(<span class="hljs-number">3</span>, <span class="hljs-string">&#x27;安溪铁观音&#x27;</span>, <span class="hljs-string">&#x27;乌龙茶&#x27;</span>, <span class="hljs-string">&#x27;铁观音，发源于福建安溪，中国十大名茶之一。&#x27;</span>, <span class="hljs-string">&#x27;寒露&#x27;</span>, <span class="hljs-string">&#x27;https://example.com/img/tieguanyin.jpg&#x27;</span>, <span class="hljs-number">1</span>),
+(<span class="hljs-number">4</span>, <span class="hljs-string">&#x27;云南普洱&#x27;</span>, <span class="hljs-string">&#x27;黑茶&#x27;</span>, <span class="hljs-string">&#x27;云南普洱茶，以云南大叶种晒青毛茶为原料。&#x27;</span>, <span class="hljs-string">&#x27;大雪&#x27;</span>, <span class="hljs-string">&#x27;https://example.com/img/puer.jpg&#x27;</span>, <span class="hljs-number">1</span>),
+(<span class="hljs-number">5</span>, <span class="hljs-string">&#x27;洞庭碧螺春&#x27;</span>, <span class="hljs-string">&#x27;绿茶&#x27;</span>, <span class="hljs-string">&#x27;洞庭碧螺春，产自苏州太湖洞庭东、西山。&#x27;</span>, <span class="hljs-string">&#x27;立夏&#x27;</span>, <span class="hljs-string">&#x27;https://example.com/img/biluochun.jpg&#x27;</span>, <span class="hljs-number">1</span>);
+
+<span class="hljs-comment">-- 溯源记录数据（审核通过）</span>
+<span class="hljs-keyword">INSERT</span> <span class="hljs-keyword">INTO</span> trace_record (trace_code, product_id, batch_no, origin_address, longitude, latitude,
+    produce_date, producer_name, raw_material, process_factory, process_date, process_desc,
+    inspect_org, inspect_date, inspect_result, warehouse_in_time, warehouse_out_time,
+    logistics_info, audit_status, created_at) <span class="hljs-keyword">VALUES</span>
+(<span class="hljs-string">&#x27;TP-ZJ-LJ-2024-000001&#x27;</span>, <span class="hljs-number">1</span>, <span class="hljs-string">&#x27;B20240401&#x27;</span>, <span class="hljs-string">&#x27;浙江省杭州市西湖区龙井路88号&#x27;</span>, <span class="hljs-number">120.129870</span>, <span class="hljs-number">30.251830</span>,
+    <span class="hljs-string">&#x27;2024-04-01&#x27;</span>, <span class="hljs-string">&#x27;杭州狮峰龙井茶业有限公司&#x27;</span>, <span class="hljs-string">&#x27;龙井43号鲜叶&#x27;</span>, <span class="hljs-string">&#x27;杭州龙井茶厂&#x27;</span>,
+    <span class="hljs-string">&#x27;2024-04-02&#x27;</span>, <span class="hljs-string">&#x27;摊放→青锅→回潮→辉锅，共4道工序&#x27;</span>,
+    <span class="hljs-string">&#x27;浙江省茶叶质量检测中心&#x27;</span>, <span class="hljs-string">&#x27;2024-04-04&#x27;</span>, <span class="hljs-string">&#x27;合格&#x27;</span>,
+    <span class="hljs-string">&#x27;2024-04-05T08:00:00&#x27;</span>, <span class="hljs-string">&#x27;2024-04-06T10:00:00&#x27;</span>,
+    <span class="hljs-string">&#x27;从杭州仓出发，经顺丰速运至上海仓，配送至客户&#x27;</span>,
+    <span class="hljs-string">&#x27;pass&#x27;</span>, <span class="hljs-string">&#x27;2024-04-06T12:00:00&#x27;</span>),
+(<span class="hljs-string">&#x27;TP-ZJ-LJ-2024-000002&#x27;</span>, <span class="hljs-number">1</span>, <span class="hljs-string">&#x27;B20240410&#x27;</span>, <span class="hljs-string">&#x27;浙江省杭州市余杭区径山镇&#x27;</span>, <span class="hljs-number">119.945000</span>, <span class="hljs-number">30.265000</span>,
+    <span class="hljs-string">&#x27;2024-04-10&#x27;</span>, <span class="hljs-string">&#x27;余杭径山茶业公司&#x27;</span>, <span class="hljs-string">&#x27;鸠坑种鲜叶&#x27;</span>, <span class="hljs-string">&#x27;径山茶厂&#x27;</span>,
+    <span class="hljs-string">&#x27;2024-04-11&#x27;</span>, <span class="hljs-string">&#x27;传统工艺，精制加工&#x27;</span>,
+    <span class="hljs-string">&#x27;余杭区茶叶检测站&#x27;</span>, <span class="hljs-string">&#x27;2024-04-12&#x27;</span>, <span class="hljs-string">&#x27;合格&#x27;</span>,
+    <span class="hljs-string">&#x27;2024-04-13T09:00:00&#x27;</span>, <span class="hljs-string">&#x27;2024-04-14T11:00:00&#x27;</span>,
+    <span class="hljs-string">&#x27;从余杭仓出发，经中通速运至客户&#x27;</span>,
+    <span class="hljs-string">&#x27;pending&#x27;</span>, <span class="hljs-string">&#x27;2024-04-14T15:00:00&#x27;</span>);
+</code></pre>
+
+            
+            
+        </body>
+        </html>
