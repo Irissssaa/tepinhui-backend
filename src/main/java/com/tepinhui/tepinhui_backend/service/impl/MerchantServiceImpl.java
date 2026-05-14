@@ -27,7 +27,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +49,14 @@ public class MerchantServiceImpl implements MerchantService {
     @Override
     public Long apply(MerchantApplyRequest request) {
         User user = getCurrentUser();
+
+        // ADMIN 和 MERCHANT 角色不能申请入驻
+        if (user.getRole() == Role.ADMIN) {
+            throw new BusinessException(403, "管理员账户无需申请商家入驻");
+        }
+        if (user.getRole() == Role.MERCHANT) {
+            throw new BusinessException(403, "您已是商家，无需重复申请");
+        }
 
         // 检查是否已有商家申请记录（pending 或 approved）
         Merchant existing = merchantMapper.selectOne(
@@ -233,25 +243,22 @@ public class MerchantServiceImpl implements MerchantService {
         }
         List<Long> productIds = merchantProducts.stream().map(Product::getId).toList();
 
-        // 销售额：所有该商家商品对应的 order_item.subtotal 总和
+        // 销售额 + 订单数量（HashSet 去重，避免内存中 stream distinct）
         BigDecimal salesAmount = BigDecimal.ZERO;
+        Set<Long> orderIdSet = new HashSet<>();
         List<OrderItem> orderItems = orderItemMapper.selectList(
             new LambdaQueryWrapper<OrderItem>()
                 .in(OrderItem::getProductId, productIds)
+                .select(OrderItem::getOrderId, OrderItem::getSubtotal)
         );
         for (OrderItem item : orderItems) {
+            orderIdSet.add(item.getOrderId());
             if (item.getSubtotal() != null) {
                 salesAmount = salesAmount.add(item.getSubtotal());
             }
         }
         stats.setSalesAmount(salesAmount);
-
-        // 订单数量：去重订单ID数
-        long orderCount = orderItems.stream()
-            .map(OrderItem::getOrderId)
-            .distinct()
-            .count();
-        stats.setOrderCount(orderCount);
+        stats.setOrderCount((long) orderIdSet.size());
 
         // 浏览量：Product 表暂无 viewCount 字段，先返回 0
         stats.setViewCount(0L);
