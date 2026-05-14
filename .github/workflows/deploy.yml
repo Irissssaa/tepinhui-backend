@@ -6,6 +6,17 @@ on:
       - main
       - dev-njmd
       - dev-zyx
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - 'mvnw'
+      - '.mvn/**'
+      - 'deploy/deploy.sh'
+      - 'deploy/rollback.sh'
+      - 'deploy/rollback-on-failure.sh'
+      - 'deploy/run-rollback.sh'
+      - 'deploy/tepinhui-backend.service'
+      - '.github/workflows/deploy.yml'
 
 jobs:
   deploy:
