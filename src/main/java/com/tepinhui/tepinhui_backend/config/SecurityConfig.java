@@ -56,6 +56,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/products", "/api/v1/products/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/trace/{traceCode}", "/api/v1/trace/product/{productId}").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/map/specialties", "/api/v1/specialties/{id}", "/api/v1/map/season-recommend").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/products").hasAnyRole("ADMIN", "MERCHANT")
                 .requestMatchers(HttpMethod.PUT, "/api/v1/products/*").hasAnyRole("ADMIN", "MERCHANT")
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/products/*").hasAnyRole("ADMIN", "MERCHANT")
