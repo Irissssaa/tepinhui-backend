@@ -134,7 +134,7 @@ class AdminModuleControllerWebMvcTest {
         statsVO.setMerchantCount(4L);
         statsVO.setProductCount(9L);
         statsVO.setOrderCount(20L);
-        statsVO.setSalesAmount(new BigDecimal("88.80"));
+        statsVO.setTotalSalesAmount(new BigDecimal("88.80"));
 
         when(adminStatsService.getAdminStats()).thenReturn(statsVO);
 
@@ -142,7 +142,7 @@ class AdminModuleControllerWebMvcTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value(200))
             .andExpect(jsonPath("$.data.userCount").value(12))
-            .andExpect(jsonPath("$.data.salesAmount").value(88.8));
+            .andExpect(jsonPath("$.data.totalSalesAmount").value(88.8));
 
         verify(adminStatsService).getAdminStats();
     }
