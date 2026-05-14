@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tepinhui.tepinhui_backend.common.Role;
+import com.tepinhui.tepinhui_backend.dto.product.ProductAuditRequest;
 import com.tepinhui.tepinhui_backend.dto.product.ProductCreateRequest;
 import com.tepinhui.tepinhui_backend.dto.product.ProductQueryRequest;
 import com.tepinhui.tepinhui_backend.dto.product.ProductUpdateRequest;
@@ -180,6 +181,11 @@ public class ProductServiceImpl implements ProductService {
         }
 
         evictProductCaches(product.getId());
+    }
+
+    @Override
+    public void auditProduct(Long id, ProductAuditRequest request) {
+        throw new BusinessException(501, "商品审核业务逻辑待实现");
     }
 
     private LambdaQueryWrapper<Product> buildPublicListQuery(ProductQueryRequest request) {
