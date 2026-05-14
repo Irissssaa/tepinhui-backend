@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/trace")
 @RequiredArgsConstructor
-@Tag(name = "溯源模块-管理端", description = "溯源审核管理")
+@Tag(name = "溯源-管理端接口", description = "管理员溯源审核与列表查询接口")
 public class AdminTraceController {
 
     private final TraceService traceService;
@@ -26,8 +26,8 @@ public class AdminTraceController {
      */
     @GetMapping("/admin/pending")
     @Operation(
-        summary = "待审核列表",
-        description = "分页查询待审核的溯源记录列表"
+        summary = "待审核列表（部分未实现）",
+        description = "分页查询待审核的溯源记录列表。（部分未实现：列表中的商品名、商家名仍为硬编码示例值）"
     )
     public Result<TracePageVO> getPendingList(
         @Parameter(description = "页码")
@@ -62,8 +62,8 @@ public class AdminTraceController {
      */
     @PutMapping("/admin/audit")
     @Operation(
-        summary = "审核溯源",
-        description = "管理员审核溯源信息，审核通过时自动生成二维码URL"
+        summary = "审核溯源（部分未实现）",
+        description = "管理员审核溯源信息，审核通过时自动生成二维码URL。（部分未实现：当前二维码 URL 仍返回示例 OSS 地址）"
     )
     public Result<TraceRecord> auditTrace(
         @Parameter(description = "审核信息")
@@ -79,8 +79,8 @@ public class AdminTraceController {
      */
     @GetMapping("/admin/list")
     @Operation(
-        summary = "所有溯源记录",
-        description = "管理员分页查询所有溯源记录（含各种审核状态）"
+        summary = "所有溯源记录（部分未实现）",
+        description = "管理员分页查询所有溯源记录（含各种审核状态）。（部分未实现：列表中的商品名、商家名仍为硬编码示例值）"
     )
     public Result<TracePageVO> getAllList(
         @Parameter(description = "页码")

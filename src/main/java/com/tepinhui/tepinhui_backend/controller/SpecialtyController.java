@@ -2,68 +2,45 @@ package com.tepinhui.tepinhui_backend.controller;
 
 import com.tepinhui.tepinhui_backend.common.Result;
 import com.tepinhui.tepinhui_backend.service.SpecialtyService;
-import com.tepinhui.tepinhui_backend.vo.specialty.*;
+import com.tepinhui.tepinhui_backend.vo.specialty.SpecialtyDetailVO;
+import com.tepinhui.tepinhui_backend.vo.specialty.SpecialtyListVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Tag(name = "特产-公开接口", description = "公开特产列表与详情查询接口")
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/specialties")
 @RequiredArgsConstructor
-@Tag(name = "特产模块", description = "特产分布地图、详情、节气推荐")
 public class SpecialtyController {
 
     private final SpecialtyService specialtyService;
 
-    /**
-     * 获取特产分布地图数据
-     * GET /tph/api/v1/map/specialties
-     */
-    @GetMapping("/map/specialties")
+    @GetMapping
     @Operation(
-        summary = "特产分布地图",
-        description = "获取全国特产分布数据，按省份分组，用于ECharts地图可视化"
+        summary = "特产列表（未实现）",
+        description = "（未实现：当前返回空列表占位）分页能力和真实筛选逻辑后续补齐，供前端先对接列表结构"
     )
-    public Result<List<RegionSpecialtyVO>> getSpecialtyMap() {
-        List<RegionSpecialtyVO> map = specialtyService.getSpecialtyMap();
-        return Result.success(map);
+    public Result<List<SpecialtyListVO>> listSpecialties() {
+        return Result.success(specialtyService.listSpecialties());
     }
 
-    /**
-     * 获取特产详情
-     * GET /tph/api/v1/specialties/{id}
-     */
-    @GetMapping("/specialties/{id}")
+    @GetMapping("/{id}")
     @Operation(
-        summary = "特产详情",
-        description = "获取特产详细信息，包括文化背景、产地坐标、季节标签等"
+        summary = "特产详情（未实现）",
+        description = "根据特产ID查询详情、产地和文化内容；当前接口仅保留契约，业务逻辑待实现"
     )
-    public Result<SpecialtyVO> getSpecialtyDetail(
+    public Result<SpecialtyDetailVO> getSpecialtyDetail(
         @Parameter(description = "特产ID", required = true)
         @PathVariable Long id
     ) {
-        SpecialtyVO detail = specialtyService.getSpecialtyDetail(id);
-        if (detail == null) {
-            return Result.error(404, "特产不存在");
-        }
-        return Result.success(detail);
-    }
-
-    /**
-     * 节气推荐
-     * GET /tph/api/v1/map/season-recommend
-     */
-    @GetMapping("/map/season-recommend")
-    @Operation(
-        summary = "节气推荐",
-        description = "根据当前季节返回推荐特产列表，匹配春/夏/秋/冬季标签"
-    )
-    public Result<SeasonRecommendVO> getSeasonRecommend() {
-        SeasonRecommendVO recommend = specialtyService.getSeasonRecommend();
-        return Result.success(recommend);
+        return Result.success(specialtyService.getSpecialtyDetail(id));
     }
 }

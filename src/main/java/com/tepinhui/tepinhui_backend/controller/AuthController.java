@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.TimeUnit;
 
-@Tag(name = "认证管理", description = "登录、注册、刷新Token、登出")
+@Tag(name = "认证-公开与用户侧接口", description = "登录、注册、刷新 Token、登出和当前用户信息接口")
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -39,7 +39,7 @@ public class AuthController {
     private final StringRedisTemplate redisTemplate;
     private final RegisterVerificationService registerVerificationService;
 
-    @Operation(summary = "用户登录")
+    @Operation(summary = "用户登录", description = "使用用户名和密码登录，登录失败次数会写入 Redis 并触发锁定策略")
     @PostMapping("/login")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         String username = request.getUsername();
@@ -166,7 +166,7 @@ public class AuthController {
         return Result.success("注册成功", toUserInfo(user));
     }
 
-    @Operation(summary = "刷新Token")
+    @Operation(summary = "刷新 Token", description = "使用 refresh token 换取新的 access token 和 refresh token")
     @PostMapping("/refresh")
     public Result<LoginResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         String refreshToken = request.getRefreshToken();
@@ -203,7 +203,7 @@ public class AuthController {
         return Result.success(response);
     }
 
-    @Operation(summary = "用户登出")
+    @Operation(summary = "用户登出", description = "将当前 access token 写入 Redis 黑名单，直到 token 自然过期")
     @PostMapping("/logout")
     public Result<Void> logout(@RequestHeader("Authorization") String authorization) {
         if (authorization != null && authorization.startsWith("Bearer ")) {
@@ -221,7 +221,7 @@ public class AuthController {
         return Result.success("登出成功", null);
     }
 
-    @Operation(summary = "获取当前用户信息")
+    @Operation(summary = "获取当前用户信息", description = "查询当前登录用户的基础信息和角色")
     @GetMapping("/me")
     public Result<LoginResponse.UserInfo> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
