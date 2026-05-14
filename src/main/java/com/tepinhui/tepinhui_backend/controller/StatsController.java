@@ -26,8 +26,8 @@ public class StatsController {
 
     @GetMapping("/trace")
     @Operation(
-        summary = "溯源统计总览（未实现）",
-        description = "（未实现：当前返回全 0 统计占位）查询溯源统计总览，供前端先对接统计卡片结构"
+        summary = "溯源统计总览",
+        description = "查询溯源统计总览数据，含 Redis 1小时缓存"
     )
     public Result<TraceStatsVO> getTraceStats() {
         return Result.success(statsService.getTraceStats());
@@ -35,8 +35,8 @@ public class StatsController {
 
     @GetMapping("/trace/by-region")
     @Operation(
-        summary = "区域溯源统计（未实现）",
-        description = "（未实现：当前返回空列表占位）按地区查询溯源统计，供前端先对接区域统计结构"
+        summary = "区域溯源统计",
+        description = "按地区查询溯源统计数据，含 Redis 1小时缓存"
     )
     public Result<List<RegionTraceStatsVO>> listTraceStatsByRegion(
         @Parameter(description = "地区筛选条件", example = "浙江省")
@@ -47,8 +47,8 @@ public class StatsController {
 
     @GetMapping("/sales/by-region")
     @Operation(
-        summary = "区域销售统计（未实现）",
-        description = "（未实现：当前返回空列表占位）按地区查询销售统计，供前端先对接区域销售结构"
+        summary = "区域销售统计",
+        description = "按地区查询销售统计数据，含 Redis 1小时缓存"
     )
     public Result<List<RegionSalesStatsVO>> listSalesStatsByRegion(
         @Parameter(description = "地区筛选条件", example = "浙江省")

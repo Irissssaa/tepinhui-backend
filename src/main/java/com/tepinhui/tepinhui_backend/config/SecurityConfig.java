@@ -37,8 +37,6 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    // 健康检查端点路径（相对于 context-path）
-    // 例如: 当 context-path=/tph 时，实际路径为 /tph/health
     @Value("${app.health-endpoint:/health}")
     private String healthEndpoint;
 
@@ -59,17 +57,17 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/auth/login",      // 用户登录
-                    "/auth/register/code", // 邮箱获取注册验证码
-                    "/auth/register",   // 用户注册
-                    "/auth/refresh",    // 刷新 Token
-                    healthEndpoint,     // 健康检查（相对于 context-path）
-                    "/swagger-ui/**",   // Swagger UI
-                    "/swagger-ui.html", // Swagger 入口
-                    "/swagger-ui/index.html", // Swagger index
-                    "/v3/api-docs/**",  // SpringDoc 3.x API 文档
-                    "/api-docs/**",     // SpringDoc 2.x API 文档
-                    "/swagger-config/**"// Swagger 配置
+                    "/auth/login",
+                    "/auth/register/code",
+                    "/auth/register",
+                    "/auth/refresh",
+                    healthEndpoint,
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/swagger-ui/index.html",
+                    "/v3/api-docs/**",
+                    "/api-docs/**",
+                    "/swagger-config/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/products", "/api/v1/products/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
@@ -90,9 +88,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/v1/orders/*/confirm").hasAnyRole("ADMIN", "CONSUMER")
                 .requestMatchers(HttpMethod.POST, "/api/v1/orders/*/review").hasAnyRole("ADMIN", "CONSUMER")
                 .requestMatchers(HttpMethod.PUT, "/api/v1/orders/*/ship").hasAnyRole("ADMIN", "MERCHANT")
-                .requestMatchers(HttpMethod.POST, "/api/v1/products").hasAnyRole("ADMIN", "MERCHANT")
-                .requestMatchers(HttpMethod.PUT, "/api/v1/products/*").hasAnyRole("ADMIN", "MERCHANT")
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/products/*").hasAnyRole("ADMIN", "MERCHANT")
                 .requestMatchers(HttpMethod.POST, "/api/v1/merchant/apply").hasAnyRole("CONSUMER", "MERCHANT", "ADMIN")
                 .requestMatchers("/api/v1/merchant/**").hasAnyRole("ADMIN", "MERCHANT")
                 .requestMatchers("/api/v1/admin/specialties/**").hasRole("ADMIN")
