@@ -26,8 +26,8 @@ public class MerchantController {
 
     @PostMapping("/apply")
     @Operation(
-        summary = "商家入驻申请（未实现）",
-        description = "已登录用户提交商家入驻申请，后续审核通过后由后端授予 MERCHANT 角色；当前接口仅保留契约，业务逻辑待实现"
+        summary = "商家入驻申请",
+        description = "已登录用户提交商家入驻申请，审核通过后自动授予 MERCHANT 角色"
     )
     public Result<Long> apply(
         @Parameter(description = "商家入驻申请", required = true)
@@ -39,8 +39,8 @@ public class MerchantController {
 
     @GetMapping("/profile")
     @Operation(
-        summary = "当前商家资料（未实现）",
-        description = "查询当前登录用户关联的商家资料；当前接口仅保留契约，业务逻辑待实现"
+        summary = "当前商家资料",
+        description = "查询当前登录用户的商家资料（含 pending/approved 状态），pending 时显示待审核状态"
     )
     public Result<MerchantDetailVO> getProfile() {
         return Result.success(merchantService.getCurrentMerchantProfile());
@@ -48,8 +48,8 @@ public class MerchantController {
 
     @GetMapping("/stats")
     @Operation(
-        summary = "商家经营数据（未实现）",
-        description = "（未实现：当前返回 0 值统计占位数据）商家查看商品、订单、销售额和浏览量等经营数据"
+        summary = "商家经营数据",
+        description = "商家查看商品数量、订单数量、销售额和浏览量等经营数据"
     )
     public Result<MerchantStatsVO> getStats() {
         return Result.success(merchantService.getCurrentMerchantStats());
