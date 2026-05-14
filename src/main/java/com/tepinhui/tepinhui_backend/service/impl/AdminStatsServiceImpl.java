@@ -4,9 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.tepinhui.tepinhui_backend.common.OrderStatus;
 import com.tepinhui.tepinhui_backend.entity.Merchant;
 import com.tepinhui.tepinhui_backend.entity.Orders;
-import com.tepinhui.tepinhui_backend.entity.Product;
 import com.tepinhui.tepinhui_backend.entity.TraceRecord;
-import com.tepinhui.tepinhui_backend.entity.User;
 import com.tepinhui.tepinhui_backend.mapper.MerchantMapper;
 import com.tepinhui.tepinhui_backend.mapper.OrdersMapper;
 import com.tepinhui.tepinhui_backend.mapper.ProductMapper;
@@ -20,9 +18,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
+import java.time.Duration;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -55,7 +52,7 @@ public class AdminStatsServiceImpl implements AdminStatsService {
 
         // 3. 写入缓存
         redisTemplate.opsForValue().set(ADMIN_STATS_CACHE_KEY, vo,
-                java.time.Duration.ofMinutes(CACHE_TTL_MINUTES));
+                Duration.ofMinutes(CACHE_TTL_MINUTES));
 
         return vo;
     }
