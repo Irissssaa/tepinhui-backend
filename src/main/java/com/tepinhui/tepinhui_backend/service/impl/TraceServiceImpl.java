@@ -230,28 +230,27 @@ public class TraceServiceImpl implements TraceService {
 
     private static final Map<Character, String> PINYIN_MAP = Map.ofEntries(
         // 省份
-        Map.entry('浙', "ZJ"), Map.entry('江', "J"), Map.entry('福', "FJ"), Map.entry('建', "J"),
+        Map.entry('浙', "ZJ"), Map.entry('江', "J"),
+        Map.entry('福', "FJ"), Map.entry('建', "J"),
         Map.entry('四', "SC"), Map.entry('川', "C"),
         Map.entry('安', "AH"), Map.entry('徽', "H"),
         Map.entry('湖', "HUN"), Map.entry('南', "N"),
         Map.entry('山', "SD"), Map.entry('东', "D"),
-        Map.entry('河', "HEN"), Map.entry('南', "N"),
-        Map.entry('广', "GD"), Map.entry('东', "D"),
-        Map.entry('云', "YN"), Map.entry('南', "N"),
+        Map.entry('河', "HEN"),
+        Map.entry('广', "GD"),
+        Map.entry('云', "YN"),
         Map.entry('贵', "GZ"), Map.entry('州', "Z"),
-        Map.entry('陕', "SX"), Map.entry('西', "X"),
+        Map.entry('陕', "SX"),
         Map.entry('甘', "GS"), Map.entry('肃', "S"),
         Map.entry('新', "XJ"), Map.entry('疆', "J"),
         Map.entry('青', "QH"), Map.entry('海', "H"),
-        Map.entry('海', "HB"), Map.entry('南', "N"),
         Map.entry('宁', "NX"), Map.entry('夏', "X"),
         Map.entry('西', "XZ"), Map.entry('藏', "Z"),
         Map.entry('内', "NM"), Map.entry('蒙', "M"), Map.entry('古', "G"),
         Map.entry('吉', "JL"), Map.entry('林', "L"),
-        Map.entry('黑', "HLJ"), Map.entry('龙', "L"), Map.entry('江', "J"),
-        Map.entry('辽', "LN"), Map.entry('宁', "LN"),
+        Map.entry('黑', "HLJ"), Map.entry('龙', "L"),
+        Map.entry('辽', "LN"),
         // 常见品类
-        Map.entry('龙', "LJ"), Map.entry('井', "J"), Map.entry('茶', "C"),
         Map.entry('苹', "PG"), Map.entry('果', "G"),
         Map.entry('葡', "PT"), Map.entry('萄', "T"),
         Map.entry('柑', "G"), Map.entry('橘', "J"),
@@ -261,10 +260,9 @@ public class TraceServiceImpl implements TraceService {
         Map.entry('芝', "ZM"), Map.entry('麻', "M"),
         Map.entry('大', "D"), Map.entry('蒜', "S"),
         Map.entry('辣', "L"), Map.entry('椒', "J"),
-        Map.entry('红', "H"), Map.entry('枣', "Z"),
         Map.entry('蜂', "FM"), Map.entry('蜜', "M"),
         Map.entry('米', "M"), Map.entry('酒', "J"),
-        Map.entry('醋', "C")
+        Map.entry('醋', "C"), Map.entry('白', "B")
     );
 
     /**
