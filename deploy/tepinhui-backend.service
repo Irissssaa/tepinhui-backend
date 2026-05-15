@@ -14,8 +14,8 @@ EnvironmentFile=-/home/tph/shared/app.env
 ExecStart=/bin/bash -lc 'exec /usr/bin/java $JAVA_OPTS -jar /home/tph/versions/latest/app.jar'
 Restart=on-failure
 RestartSec=10
-StandardOutput=journal
-StandardError=journal
+StandardOutput=append:/home/tph/shared/logs/tepinhui-backend/application.log
+StandardError=append:/home/tph/shared/logs/tepinhui-backend/application.log
 
 [Install]
 WantedBy=multi-user.target

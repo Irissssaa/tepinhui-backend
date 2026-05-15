@@ -1,235 +1,211 @@
 # Tepinhui Backend 部署方案
 
-## 🎯 方案概述
+## 1. 方案概述
 
-本部署方案实现了**安全、可靠、高效**的生产环境部署，支持：
-- ✅ GitHub Actions 打包源码归档并在服务器构建
-- ✅ 版本化管理，自动保留最近 5 个历史版本
-- ✅ 一键回滚功能
-- ✅ systemd 服务管理（自动重启、开机自启、失败自动回滚）
-- ✅ 完整的健康检查和监控
+当前仓库的部署链路为：
 
-## 📁 目录结构
+- GitHub Actions 上传 `source-code.tar.gz`、部署脚本和回滚脚本到服务器
+- 服务器端 `deploy.sh` 解压源码后执行 `./mvnw -B clean package -DskipTests`
+- 构建成功后切换 `/home/tph/versions/latest -> /home/tph/versions/<version>`
+- `systemd` 服务 `tepinhui-backend` 从 `latest/app.jar` 启动
+- 服务标准输出和标准错误统一追加到固定文件日志
 
-```
+默认部署目录：
+
+```text
 /home/tph/
-├── versions/                    # 版本目录
-│   ├── 20260508-abc123/         # 版本目录
-│   │   └── app.jar              # 应用 JAR
-│   ├── 20260507-def456/         # 旧版本
-│   │   └── app.jar
-│   └── latest -> 20260508-abc123  # 最新版本软链接
+├── versions/
+│   ├── <version>/
+│   │   ├── app.jar
+│   │   └── ...
+│   └── latest -> <version>
 ├── shared/
-│   └── app.env                  # 环境变量配置
-├── logs/
-│   └── tepinhui-backend.log     # 应用日志
-└── deploy.sh                    # 部署脚本
+│   ├── app.env
+│   └── logs/
+│       └── tepinhui-backend/
+│           └── application.log
+├── deploy.sh
+└── rollback.sh
 ```
 
-## 🚀 部署流程
+## 2. 服务管理
 
-### 自动部署（推荐）
-
-代码推送到 `main` 或 `dev-njmd` 分支后自动触发：
-
-1. **打包阶段**：在 GitHub Actions 中生成版本号并打包源码归档
-2. **传输阶段**：上传源码归档和部署脚本到服务器
-3. **部署阶段**：服务器解压、构建、切换 `latest`、健康检查并清理旧版本
-
-### 手动部署
+服务名称：`tepinhui-backend`
 
 ```bash
-# 在服务器上执行
+sudo systemctl status tepinhui-backend
+sudo systemctl start tepinhui-backend
+sudo systemctl stop tepinhui-backend
+sudo systemctl restart tepinhui-backend
+```
+
+回滚失败处理服务仍会写入 journald：
+
+```bash
+sudo journalctl -u tepinhui-backend-rollback -f
+```
+
+说明：
+
+- `tepinhui-backend` 主应用日志已切换为文件输出，不再以 `journalctl -u tepinhui-backend` 作为主查看方式。
+- `deploy.sh` 每次部署都会重写 `/etc/systemd/system/tepinhui-backend.service`，所以如需调整日志路径，应通过环境变量和脚本默认值统一管理，不要只手改线上 unit 文件。
+
+## 3. 文件日志说明
+
+### 固定日志路径
+
+- 默认日志文件：`/home/tph/shared/logs/tepinhui-backend/application.log`
+- systemd unit 使用：
+  - `StandardOutput=append:/home/tph/shared/logs/tepinhui-backend/application.log`
+  - `StandardError=append:/home/tph/shared/logs/tepinhui-backend/application.log`
+- 部署脚本会自动创建目录并设置：
+  - 目录：`/home/tph/shared/logs/tepinhui-backend`
+  - 文件权限：`0644`
+  - 文件属主：`tph:tph`
+
+### 常用查看命令
+
+```bash
+sudo tail -f /home/tph/shared/logs/tepinhui-backend/application.log
+sudo tail -n 100 /home/tph/shared/logs/tepinhui-backend/application.log
+sudo grep " ERROR " /home/tph/shared/logs/tepinhui-backend/application.log
+sudo ls -lh /home/tph/shared/logs/tepinhui-backend/application.log
+```
+
+### 日志格式
+
+应用默认主行格式由 `application.properties` 固定为：
+
+```text
+yyyy-MM-dd HH:mm:ss.SSS | LEVEL | [thread] | logger | message
+```
+
+管理员日志读取接口只保证解析这种“主行”。多行堆栈续行不会合并展示。
+
+## 4. 日志读取接口
+
+- HTTP 方法：`GET`
+- 默认实际路径：`/tph/api/v1/admin/logs`
+- 相对路径：`/api/v1/admin/logs`
+- 权限：仅 `ADMIN` 可访问
+
+支持的查询参数：
+
+| 参数 | 说明 |
+|------|------|
+| `startTime` | ISO-8601 本地时间，例如 `2026-05-15T09:30:00` |
+| `endTime` | ISO-8601 本地时间，例如 `2026-05-15T10:30:00` |
+| `level` | `TRACE`、`DEBUG`、`INFO`、`WARN`、`ERROR` |
+| `keyword` | 对日志消息体做大小写敏感包含匹配 |
+| `limit` | 返回条数，未传使用默认值，超过最大值直接拒绝 |
+
+说明：
+
+- 接口只读取单一文件 `application.log`。
+- 不支持任意路径读取。
+- 不支持历史归档文件、轮转文件或多文件聚合。
+- 匿名用户和非管理员角色会被拒绝。
+
+## 5. 环境变量
+
+服务器环境变量文件：`/home/tph/shared/app.env`
+
+至少关注以下与本次功能直接相关的配置：
+
+| 变量名 | 说明 | 默认值 |
+|------|------|------|
+| `APP_LOG_FILE_PATH` | 管理端日志读取接口返回的日志文件路径配置 | `/home/tph/shared/logs/tepinhui-backend/application.log` |
+| `APP_LOG_READ_DEFAULT_LIMIT` | 未传 `limit` 时默认返回条数 | `100` |
+| `APP_LOG_READ_MAX_LIMIT` | `limit` 可接受最大值 | `500` |
+
+补充说明：
+
+- 当前 systemd unit 的输出路径由部署脚本固定写入 `/home/tph/shared/logs/tepinhui-backend/application.log`。
+- 如果只修改 `APP_LOG_FILE_PATH`，而不同时调整 `deploy.sh` / `tepinhui-backend.service` 的输出路径，接口读取路径与实际落盘路径会不一致。
+- 因此变更日志路径时，必须同步修改部署脚本默认值、systemd 模板和环境变量，保持写入与读取指向同一文件。
+
+## 6. 部署与回滚
+
+手动部署示例：
+
+```bash
 cd /home/tph
 chmod +x deploy.sh
-./deploy.sh --version 20260508-abc123
+./deploy.sh --version 20260515-abc123
 ```
 
-## 🔄 版本管理
-
-### 查看可用版本
-
-```bash
-./rollback.sh --list
-```
-
-输出示例：
-```
-[2026-05-08 10:00:00] Available versions:
-=========================================
-1. 20260508-abc123 (current) - Created: 2026-05-08 10:00:00
-2. 20260507-def456 - Created: 2026-05-07 15:00:00
-3. 20260506-789ghi - Created: 2026-05-06 12:00:00
-=========================================
-Total versions: 3
-```
-
-### 回滚到指定版本
-
-```bash
-./rollback.sh --version 20260507-def456
-```
-
-这将：
-1. 停止当前服务
-2. 切换到指定版本
-3. 重启服务
-4. 执行健康检查
-
-### 查看当前状态
+查看当前状态：
 
 ```bash
 ./rollback.sh --status
 ```
 
-## ⚙️ 服务管理
-
-### systemd 服务
-
-服务名称：`tepinhui-backend`
+查看可回滚版本：
 
 ```bash
-# 查看服务状态
-sudo systemctl status tepinhui-backend
-
-# 启动服务
-sudo systemctl start tepinhui-backend
-
-# 停止服务
-sudo systemctl stop tepinhui-backend
-
-# 重启服务
-sudo systemctl restart tepinhui-backend
-
-# 查看日志
-sudo journalctl -u tepinhui-backend -f
+./rollback.sh --list
 ```
 
-### 自动重启
-
-systemd 会在以下情况自动重启应用：
-- 应用崩溃
-- 进程被意外终止
-- 服务器重启后自动启动
-
-## 📝 配置文件
-
-### 环境变量
-
-文件位置：`/home/tph/shared/app.env`
+回滚到指定版本：
 
 ```bash
-# 数据库配置
-DATABASE_URL=jdbc:postgresql://localhost:5432/tepinhui
-DATABASE_USER=tph
-DATABASE_PASSWORD=xxx
-
-# 应用配置
-SERVER_PORT=8060
-JAVA_OPTS=-Xms256m -Xmx512m
+./rollback.sh --version 20260514-def456
 ```
 
-### GitHub Actions Variables
+## 7. 健康检查与排障
 
-在 GitHub 仓库 Settings → Secrets and Variables → Actions 中配置：
+默认健康检查地址：
 
-| 变量名 | 说明 | 默认值 |
-|-------|------|--------|
-| `SERVER_HOST` | 服务器 IP | - |
-| `SERVER_USER` | SSH 用户名 | - |
-| `SERVER_PORT` | SSH 端口 | 22 |
-| `DEPLOY_PATH` | 部署路径 | /home/tph |
-| `APP_ENV_FILE` | 环境变量文件 | /home/tph/shared/app.env |
+```text
+http://127.0.0.1:8060/tph/health
+```
 
-## 🔧 脚本说明
+服务启动失败时建议按这个顺序排查：
 
-### deploy.sh
+1. `sudo systemctl status tepinhui-backend`
+2. `sudo tail -n 100 /home/tph/shared/logs/tepinhui-backend/application.log`
+3. `curl http://127.0.0.1:8060/tph/health`
+4. `ls -la /home/tph/versions/latest`
 
-部署脚本，负责：
-- 接收源码归档
-- 在服务器构建 JAR
-- 在健康检查通过后保留最新版本
-- 使用 systemd 启动服务
-- 执行健康检查
-- 清理旧版本
-
-### rollback.sh
-
-版本回滚脚本，支持：
-- 查看所有版本
-- 回滚到指定版本
-- 查看当前状态
-
-## 🛡️ 安全改进
-
-### 已解决的问题
-
-1. **SSL 验证**：不再禁用 SSL 验证
-2. **部署一致性**：`latest` 仅在构建成功并通过健康检查后切换
-3. **构建安全**：构建在 CI 环境中完成
-4. **SSH 安全**：使用 `StrictHostKeyChecking yes`
-
-### 进一步建议
-
-- 考虑使用 SSH 密钥而非密码
-- 配置防火墙限制访问
-- 定期轮换部署密钥
-- 使用容器化部署（如 Docker）
-
-## 📊 监控
-
-### 健康检查
-
-端点：`http://<server>:8060/tph/health`
-
-### 日志
+如果是自动回滚链路异常，再补看：
 
 ```bash
-# 查看实时日志
-sudo journalctl -u tepinhui-backend -f
-
-# 查看最近 100 行日志
-sudo journalctl -u tepinhui-backend -n 100
-
-# 查看特定时间段日志
-sudo journalctl -u tepinhui-backend --since "2026-05-08" --until "2026-05-09"
+sudo journalctl -u tepinhui-backend-rollback -e
 ```
 
-## 🐛 故障排查
+## 8. 日志轮转与清理策略
 
-### 服务启动失败
+当前仓库内尚未提供 `logrotate` 配置文件，首版策略如下：
 
-```bash
-# 查看服务状态
-sudo systemctl status tepinhui-backend
+- 应用只写单一活动文件 `application.log`
+- 管理端接口只读当前活动文件，不读历史归档
+- 运维侧需要在服务器上额外配置 `logrotate` 或等效清理机制
 
-# 查看详细日志
-sudo journalctl -u tepinhui-backend -e
-```
+推荐最小 `logrotate` 策略：
 
-### JAR 文件不存在
+- 按天轮转或按文件大小轮转
+- 保留最近 7 到 14 个归档
+- 使用 `copytruncate` 或结合服务重启策略验证切割行为
 
-```bash
-# 检查版本目录
-ls -la /home/tph/versions/
+风险：
 
-# 检查最新版本
-ls -la /home/tph/versions/latest/
-```
+- 文件持续追加，若未配置轮转，磁盘占用会持续增长
+- 首版接口不支持跨轮转文件聚合查询，轮转后只能读取当前活动文件
 
-### 健康检查超时
+## 9. 本次验证结论
 
-1. 检查应用日志是否有错误
-2. 确认端口是否被占用：`lsof -i:8060`
-3. 确认数据库连接是否正常
+已执行：
 
-## 📈 性能对比
+- `.\mvnw.cmd -q "-Dtest=AdminModuleControllerWebMvcTest,AdminLogServiceImplTest" test`
+- 结果：通过
 
-| 指标 | 旧方案 | 新方案 | 改进 |
-|------|-------|--------|------|
-| 部署时间 | ~5min | ~30s | ⬆️ 90% |
-| 服务器负载 | 高（手工部署） | 中（自动构建+自动切换） | ✅ |
-| 源码安全 | ❌ 无版本隔离 | ✅ 独立版本目录 | ✅ |
-| 回滚能力 | ❌ 无 | ✅ 一键 | ✅ |
-| 自动重启 | ❌ nohup | ✅ systemd | ✅ |
-| 版本管理 | ❌ 无 | ✅ 5个版本 | ✅ |
+未执行：
+
+- 本机为 Windows 开发环境，未提供 Linux `systemd` 运行条件
+- 因此“systemd 启动后持续向日志文件追加内容”以及“真实服务接口读取该文件”的联调未在本机完成
+
+待人工验证项：
+
+1. 在 Linux/systemd 服务器部署后执行 `sudo tail -f /home/tph/shared/logs/tepinhui-backend/application.log`
+2. 调用 `GET /tph/api/v1/admin/logs`，确认返回内容与文件追加内容一致
+3. 如服务器启用了日志轮转，再验证轮转后的主文件仍可持续写入

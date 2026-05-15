@@ -23,8 +23,8 @@ APP_ENV_FILE="${APP_ENV_FILE:-${DEPLOY_PATH}/shared/app.env}"
 VERSIONS_DIR="${DEPLOY_PATH}/versions"
 LATEST_VERSION="${VERSIONS_DIR}/latest"
 JAR_FILE="${LATEST_VERSION}/app.jar"
-LOG_DIR="${DEPLOY_PATH}/logs"
-LOG_FILE="${LOG_DIR}/${APP_NAME}.log"
+LOG_DIR="/home/tph/shared/logs/${APP_NAME}"
+LOG_FILE="${LOG_DIR}/application.log"
 MAX_VERSIONS="${MAX_VERSIONS:-5}"
 DEPLOY_LOCK_FILE="${VERSIONS_DIR}/.deploy-in-progress.lock"
 
@@ -186,8 +186,8 @@ EnvironmentFile=-${APP_ENV_FILE}
 ExecStart=/bin/bash -lc 'exec /usr/bin/java \$JAVA_OPTS -jar ${JAR_FILE}'
 Restart=on-failure
 RestartSec=10
-StandardOutput=journal
-StandardError=journal
+StandardOutput=append:${LOG_FILE}
+StandardError=append:${LOG_FILE}
 
 [Install]
 WantedBy=multi-user.target
@@ -208,6 +208,14 @@ EOF
 
   sudo systemctl daemon-reload
   sudo systemctl enable "${SERVICE_NAME}" >/dev/null 2>&1 || true
+}
+
+prepare_log_directory() {
+  log "Preparing application log directory: ${LOG_DIR}"
+  sudo install -d -o tph -g tph -m 0755 "${LOG_DIR}"
+  sudo touch "${LOG_FILE}"
+  sudo chown tph:tph "${LOG_FILE}"
+  sudo chmod 0644 "${LOG_FILE}"
 }
 
 stop_service() {
@@ -237,8 +245,8 @@ health_check() {
     fi
 
     if ! sudo systemctl is-active "${SERVICE_NAME}" >/dev/null 2>&1; then
-      log "Service exited unexpectedly. Checking logs..."
-      sudo journalctl -u "${SERVICE_NAME}" --no-pager -n 100
+      log "Service exited unexpectedly. Showing recent application logs..."
+      sudo tail -n 100 "${LOG_FILE}" || true
       return 1
     fi
 
@@ -247,7 +255,7 @@ health_check() {
   done
 
   log "Health check timed out after ${STARTUP_TIMEOUT}s"
-  sudo journalctl -u "${SERVICE_NAME}" --no-pager -n 100
+  sudo tail -n 100 "${LOG_FILE}" || true
   return 1
 }
 
@@ -508,7 +516,8 @@ main() {
   setup_java
   verify_deployment_environment
 
-  mkdir -p "${LOG_DIR}" "$(version_dir "${VERSION}")"
+  mkdir -p "$(version_dir "${VERSION}")"
+  prepare_log_directory
 
   extract_source_code
   build_application
@@ -570,8 +579,8 @@ while [[ $# -gt 0 ]]; do
       VERSIONS_DIR="${DEPLOY_PATH}/versions"
       LATEST_VERSION="${VERSIONS_DIR}/latest"
       JAR_FILE="${LATEST_VERSION}/app.jar"
-      LOG_DIR="${DEPLOY_PATH}/logs"
-      LOG_FILE="${LOG_DIR}/${APP_NAME}.log"
+      LOG_DIR="/home/tph/shared/logs/${APP_NAME}"
+      LOG_FILE="${LOG_DIR}/application.log"
       APP_ENV_FILE="${APP_ENV_FILE:-${DEPLOY_PATH}/shared/app.env}"
       DEPLOY_LOCK_FILE="${VERSIONS_DIR}/.deploy-in-progress.lock"
       shift 2
