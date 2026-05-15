@@ -48,4 +48,7 @@ cd tepinhui-backend
 推送到 `main` 分支后自动触发部署，在 [GitHub Actions](../../actions) 查看部署状态。
 
 详细部署文档：[docs/deploy.md](docs/deploy.md)
+
+## 日志查询
+
 **查询服务器日志脚本用法**: [scripts/log_cli_usage.md](scripts/log_cli_usage.md)
