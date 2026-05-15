@@ -1,14 +1,18 @@
 package com.tepinhui.tepinhui_backend.controller;
 
 import com.tepinhui.tepinhui_backend.common.Result;
+import com.tepinhui.tepinhui_backend.dto.order.OrderCalculateRequest;
 import com.tepinhui.tepinhui_backend.dto.order.OrderCreateRequest;
+import com.tepinhui.tepinhui_backend.dto.order.OrderPayRequest;
 import com.tepinhui.tepinhui_backend.dto.order.OrderQueryRequest;
 import com.tepinhui.tepinhui_backend.dto.order.OrderShipRequest;
 import com.tepinhui.tepinhui_backend.dto.review.ReviewCreateRequest;
 import com.tepinhui.tepinhui_backend.service.OrderService;
 import com.tepinhui.tepinhui_backend.service.ReviewService;
+import com.tepinhui.tepinhui_backend.vo.order.OrderCalculateVO;
 import com.tepinhui.tepinhui_backend.vo.order.OrderDetailVO;
 import com.tepinhui.tepinhui_backend.vo.order.OrderPageVO;
+import com.tepinhui.tepinhui_backend.vo.order.OrderPayVO;
 import com.tepinhui.tepinhui_backend.vo.review.ReviewVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,8 +39,8 @@ public class OrderController {
 
     @PostMapping
     @Operation(
-        summary = "创建订单（未实现）",
-        description = "提交当前登录用户订单；当前接口仅保留契约，真实下单、库存扣减和支付逻辑待实现"
+        summary = "创建订单",
+        description = "创建订单并扣减库存，校验商品价格与库存可用性，返回订单详情（含商品项列表、金额明细）"
     )
     public Result<OrderDetailVO> createOrder(
         @Parameter(description = "创建订单请求", required = true)
@@ -47,8 +51,8 @@ public class OrderController {
 
     @GetMapping
     @Operation(
-        summary = "订单分页列表（未实现）",
-        description = "（未实现：当前返回空分页数据占位）分页查询当前登录用户订单，分页字段保持稳定"
+        summary = "订单分页列表",
+        description = "分页查询当前登录用户订单，支持按订单状态筛选，返回分页数据（records、total、page、size）"
     )
     public Result<OrderPageVO> getOrders(@Valid @ModelAttribute OrderQueryRequest request) {
         return Result.success(orderService.getCurrentUserOrders(request));
@@ -56,8 +60,8 @@ public class OrderController {
 
     @GetMapping("/{id}")
     @Operation(
-        summary = "订单详情（未实现）",
-        description = "根据订单ID查询订单详情；当前接口仅保留契约，业务逻辑待实现"
+        summary = "订单详情",
+        description = "根据订单ID查询订单详情，包含订单商品项列表；订单不存在返回404，无权访问返回403"
     )
     public Result<OrderDetailVO> getOrderDetail(
         @Parameter(description = "订单ID", required = true)
@@ -68,8 +72,8 @@ public class OrderController {
 
     @PutMapping("/{id}/cancel")
     @Operation(
-        summary = "取消订单（未实现）",
-        description = "取消指定订单；当前接口仅保留契约，业务逻辑待实现"
+        summary = "取消订单",
+        description = "取消指定订单并恢复库存，仅 pending 状态的订单可取消；订单不存在返回404，状态不可取消返回400"
     )
     public Result<Void> cancelOrder(
         @Parameter(description = "订单ID", required = true)
@@ -81,8 +85,8 @@ public class OrderController {
 
     @PutMapping("/{id}/confirm")
     @Operation(
-        summary = "确认收货（未实现）",
-        description = "确认指定订单已收货；当前接口仅保留契约，业务逻辑待实现"
+        summary = "确认收货",
+        description = "确认指定订单已收货，将订单状态从 shipped 更新为 done；仅 shipped 状态的订单可确认；订单不存在返回404，状态不可确认返回400"
     )
     public Result<Void> confirmOrder(
         @Parameter(description = "订单ID", required = true)
@@ -94,8 +98,8 @@ public class OrderController {
 
     @PutMapping("/{id}/ship")
     @Operation(
-        summary = "订单发货（未实现）",
-        description = "商家为指定订单录入物流单号并发货；当前接口仅保留契约，业务逻辑待实现"
+        summary = "订单发货",
+        description = "商家确认发货并填写物流单号，将订单状态从 paid 更新为 shipped；仅 paid 状态的订单可发货；订单不存在返回404，状态不可发货返回400"
     )
     public Result<Void> shipOrder(
         @Parameter(description = "订单ID", required = true)
@@ -109,8 +113,8 @@ public class OrderController {
 
     @PostMapping("/{id}/review")
     @Operation(
-        summary = "评价订单（未实现）",
-        description = "为指定订单创建评价；当前接口仅保留契约，评价资格校验和真实业务逻辑待实现"
+        summary = "评价订单",
+        description = "为已完成订单创建商品评价，校验评价资格（订单状态须为 done 且未评价）；订单不存在返回404，无评价资格返回400"
     )
     public Result<ReviewVO> createOrderReview(
         @Parameter(description = "订单ID", required = true)
@@ -119,5 +123,31 @@ public class OrderController {
         @RequestBody @Valid ReviewCreateRequest request
     ) {
         return Result.success("订单评价提交成功", reviewService.createOrderReview(id, request));
+    }
+
+    @PostMapping("/calculate")
+    @Operation(
+        summary = "订单算价",
+        description = "根据商品项和收货地址计算订单金额，返回商品明细、小计、运费、优惠及应付总额"
+    )
+    public Result<OrderCalculateVO> calculateOrder(
+        @Parameter(description = "订单算价请求", required = true)
+        @RequestBody @Valid OrderCalculateRequest request
+    ) {
+        return Result.success(orderService.calculateOrder(request));
+    }
+
+    @PostMapping("/{id}/pay")
+    @Operation(
+        summary = "订单支付（模拟）",
+        description = "为指定订单发起模拟支付，将订单状态从 pending 更新为 paid；订单不存在返回404，无权操作返回403，状态不可支付返回400"
+    )
+    public Result<OrderPayVO> payOrder(
+        @Parameter(description = "订单ID", required = true)
+        @PathVariable Long id,
+        @Parameter(description = "订单支付请求", required = true)
+        @RequestBody @Valid OrderPayRequest request
+    ) {
+        return Result.success(orderService.payOrder(id, request));
     }
 }
