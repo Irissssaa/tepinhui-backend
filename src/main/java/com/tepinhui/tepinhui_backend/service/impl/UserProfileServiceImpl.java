@@ -1,6 +1,7 @@
 package com.tepinhui.tepinhui_backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.tepinhui.tepinhui_backend.dto.user.UserProfileUpdateRequest;
 import com.tepinhui.tepinhui_backend.entity.User;
 import com.tepinhui.tepinhui_backend.exception.BusinessException;
@@ -48,7 +49,29 @@ public class UserProfileServiceImpl implements UserProfileService {
             user.setPhone(request.getPhone());
         }
 
-        userMapper.updateById(user);
+        // 用 LambdaUpdateWrapper 只更新非空字段，避免将 password 等字段传回数据库
+        LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
+        boolean hasUpdate = false;
+        if (StringUtils.hasText(request.getNickname())) {
+            updateWrapper.set(User::getNickname, request.getNickname());
+            hasUpdate = true;
+        }
+        if (StringUtils.hasText(request.getAvatarUrl())) {
+            updateWrapper.set(User::getAvatarUrl, request.getAvatarUrl());
+            hasUpdate = true;
+        }
+        if (StringUtils.hasText(request.getEmail())) {
+            updateWrapper.set(User::getEmail, request.getEmail());
+            hasUpdate = true;
+        }
+        if (StringUtils.hasText(request.getPhone())) {
+            updateWrapper.set(User::getPhone, request.getPhone());
+            hasUpdate = true;
+        }
+        if (hasUpdate) {
+            updateWrapper.eq(User::getId, user.getId());
+            userMapper.update(null, updateWrapper);
+        }
 
         // 重新查询返回最新数据
         User updated = userMapper.selectById(user.getId());
