@@ -22,8 +22,8 @@ public class CategoryController {
 
     @GetMapping
     @Operation(
-        summary = "分类列表（未实现）",
-        description = "（未实现：当前返回空列表占位）查询公开分类列表，供前端先对接分类结构"
+        summary = "分类列表",
+        description = "查询公开分类列表，支持一级/二级分类树形结构，按 sortOrder 排序"
     )
     public Result<List<CategoryVO>> listCategories() {
         return Result.success(categoryService.listCategories());
