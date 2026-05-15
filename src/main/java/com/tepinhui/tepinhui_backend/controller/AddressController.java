@@ -31,8 +31,8 @@ public class AddressController {
 
     @GetMapping
     @Operation(
-        summary = "收货地址列表（未实现）",
-        description = "（未实现：当前返回空列表占位数据）查询当前登录用户的收货地址列表"
+        summary = "收货地址列表",
+        description = "查询当前登录用户的收货地址列表，按默认优先+创建时间倒序排列"
     )
     public Result<List<AddressVO>> listAddresses() {
         return Result.success(addressService.listCurrentUserAddresses());
@@ -40,8 +40,8 @@ public class AddressController {
 
     @GetMapping("/{id}")
     @Operation(
-        summary = "收货地址详情（未实现）",
-        description = "根据地址ID查询当前登录用户的收货地址详情；当前接口仅保留契约，业务逻辑待实现"
+        summary = "收货地址详情",
+        description = "根据地址ID查询当前登录用户的收货地址详情；返回403表示无权访问"
     )
     public Result<AddressVO> getAddress(
         @Parameter(description = "地址ID", required = true)
@@ -52,8 +52,8 @@ public class AddressController {
 
     @PostMapping
     @Operation(
-        summary = "新增收货地址（未实现）",
-        description = "为当前登录用户新增收货地址；当前接口仅保留契约，业务逻辑待实现"
+        summary = "新增收货地址",
+        description = "为当前登录用户新增收货地址；如设isDefault=1会自动取消其他默认地址"
     )
     public Result<AddressVO> createAddress(
         @Parameter(description = "收货地址创建请求", required = true)
@@ -64,8 +64,8 @@ public class AddressController {
 
     @PutMapping("/{id}")
     @Operation(
-        summary = "更新收货地址（未实现）",
-        description = "根据地址ID更新当前登录用户的收货地址；当前接口仅保留契约，业务逻辑待实现"
+        summary = "更新收货地址",
+        description = "根据地址ID更新当前登录用户的收货地址；返回403表示无权操作"
     )
     public Result<AddressVO> updateAddress(
         @Parameter(description = "地址ID", required = true)
@@ -78,8 +78,8 @@ public class AddressController {
 
     @DeleteMapping("/{id}")
     @Operation(
-        summary = "删除收货地址（未实现）",
-        description = "根据地址ID删除当前登录用户的收货地址；当前接口仅保留契约，业务逻辑待实现"
+        summary = "删除收货地址",
+        description = "根据地址ID删除当前登录用户的收货地址；返回403表示无权操作"
     )
     public Result<Void> deleteAddress(
         @Parameter(description = "地址ID", required = true)
@@ -91,8 +91,8 @@ public class AddressController {
 
     @PutMapping("/{id}/default")
     @Operation(
-        summary = "设置默认收货地址（未实现）",
-        description = "将当前登录用户的指定地址设置为默认地址；当前接口仅保留契约，业务逻辑待实现"
+        summary = "设置默认收货地址",
+        description = "将当前登录用户的指定地址设为默认地址；返回403表示无权操作"
     )
     public Result<Void> setDefaultAddress(
         @Parameter(description = "地址ID", required = true)
