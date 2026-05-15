@@ -11,6 +11,7 @@ import com.tepinhui.tepinhui_backend.controller.admin.AdminStatsController;
 import com.tepinhui.tepinhui_backend.controller.admin.AdminTraceController;
 import com.tepinhui.tepinhui_backend.controller.admin.AdminUserController;
 import com.tepinhui.tepinhui_backend.entity.TraceRecord;
+import com.tepinhui.tepinhui_backend.exception.BusinessException;
 import com.tepinhui.tepinhui_backend.exception.GlobalExceptionHandler;
 import com.tepinhui.tepinhui_backend.security.JwtAuthenticationFilter;
 import com.tepinhui.tepinhui_backend.security.JwtUtil;
@@ -51,6 +52,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -341,6 +343,145 @@ class AdminModuleControllerWebMvcTest {
             .andExpect(jsonPath("$.data.role").value("ADMIN"));
 
         verify(adminUserService).createUser(any());
+    }
+
+    @Test
+    void anonymousShouldBeRejectedFromAdminCreateUser() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value(401))
+            .andExpect(jsonPath("$.message").value("未登录"));
+
+        verifyNoInteractions(adminUserService);
+    }
+
+    @Test
+    @WithMockUser(roles = "MERCHANT")
+    void merchantShouldBeRejectedFromAdminCreateUser() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "username": "admin2",
+                      "phone": "13900139009",
+                      "password": "Tph@123456",
+                      "email": "admin2@example.com",
+                      "nickname": "平台运营管理员",
+                      "role": "ADMIN"
+                    }
+                    """))
+            .andExpect(status().isForbidden());
+
+        verifyNoInteractions(adminUserService);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminCreateUserShouldFailWhenUsernameDuplicated() throws Exception {
+        when(adminUserService.createUser(any())).thenThrow(new BusinessException(409, "用户名已存在"));
+
+        mockMvc.perform(post("/api/v1/admin/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "username": "admin2",
+                      "phone": "13900139009",
+                      "password": "Tph@123456",
+                      "email": "admin2@example.com",
+                      "nickname": "平台运营管理员",
+                      "role": "ADMIN"
+                    }
+                    """))
+            .andExpect(jsonPath("$.code").value(409))
+            .andExpect(jsonPath("$.message").value("用户名已存在"));
+
+        verify(adminUserService).createUser(any());
+    }
+
+    @Test
+    void anonymousShouldBeRejectedFromAdminUpdateUserRole() throws Exception {
+        mockMvc.perform(put("/api/v1/admin/users/18/role")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\":\"MERCHANT\"}"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value(401));
+
+        verifyNoInteractions(adminUserService);
+    }
+
+    @Test
+    @WithMockUser(roles = "MERCHANT")
+    void merchantShouldBeRejectedFromAdminUpdateUserRole() throws Exception {
+        mockMvc.perform(put("/api/v1/admin/users/18/role")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\":\"MERCHANT\"}"))
+            .andExpect(status().isForbidden());
+
+        verifyNoInteractions(adminUserService);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminShouldUpdateUserRole() throws Exception {
+        AdminUserVO userVO = new AdminUserVO();
+        userVO.setId(18L);
+        userVO.setUsername("merchant1");
+        userVO.setRole("MERCHANT");
+
+        when(adminUserService.updateUserRole(eq(18L), any())).thenReturn(userVO);
+
+        mockMvc.perform(put("/api/v1/admin/users/18/role")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "role": "MERCHANT"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(200))
+            .andExpect(jsonPath("$.message").value("用户角色更新成功"))
+            .andExpect(jsonPath("$.data.id").value(18))
+            .andExpect(jsonPath("$.data.role").value("MERCHANT"));
+
+        verify(adminUserService).updateUserRole(eq(18L), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminUpdateUserRoleShouldReturn404WhenUserMissing() throws Exception {
+        when(adminUserService.updateUserRole(eq(999L), any())).thenThrow(new BusinessException(404, "用户不存在"));
+
+        mockMvc.perform(put("/api/v1/admin/users/999/role")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "role": "MERCHANT"
+                    }
+                    """))
+            .andExpect(jsonPath("$.code").value(404))
+            .andExpect(jsonPath("$.message").value("用户不存在"));
+
+        verify(adminUserService).updateUserRole(eq(999L), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminUpdateUserRoleShouldRejectSelfDowngrade() throws Exception {
+        when(adminUserService.updateUserRole(eq(1L), any())).thenThrow(new BusinessException(403, "不允许调整自己的角色"));
+
+        mockMvc.perform(put("/api/v1/admin/users/1/role")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "role": "CONSUMER"
+                    }
+                    """))
+            .andExpect(jsonPath("$.code").value(403))
+            .andExpect(jsonPath("$.message").value("不允许调整自己的角色"));
+
+        verify(adminUserService).updateUserRole(eq(1L), any());
     }
 
     @Test
