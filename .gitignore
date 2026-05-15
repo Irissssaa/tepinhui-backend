@@ -32,6 +32,7 @@ build/
 ### VS Code ###
 .vscode/
 docs/api_doc_planned.html
+
 deploy/app.env
 .claude
 .codex

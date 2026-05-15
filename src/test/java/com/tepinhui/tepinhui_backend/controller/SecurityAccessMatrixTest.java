@@ -1,15 +1,21 @@
 package com.tepinhui.tepinhui_backend.controller;
 
 import com.tepinhui.tepinhui_backend.common.Result;
+import com.tepinhui.tepinhui_backend.common.Role;
 import com.tepinhui.tepinhui_backend.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tepinhui.tepinhui_backend.config.ResultHttpStatusAdvice;
 import com.tepinhui.tepinhui_backend.controller.admin.AdminStatsController;
 import com.tepinhui.tepinhui_backend.controller.admin.AdminTraceController;
+import com.tepinhui.tepinhui_backend.entity.Merchant;
 import com.tepinhui.tepinhui_backend.entity.TraceRecord;
+import com.tepinhui.tepinhui_backend.entity.User;
+import com.tepinhui.tepinhui_backend.exception.BusinessException;
 import com.tepinhui.tepinhui_backend.exception.GlobalExceptionHandler;
 import com.tepinhui.tepinhui_backend.security.JwtAuthenticationFilter;
 import com.tepinhui.tepinhui_backend.security.JwtUtil;
+import com.tepinhui.tepinhui_backend.mapper.MerchantMapper;
+import com.tepinhui.tepinhui_backend.mapper.UserMapper;
 import com.tepinhui.tepinhui_backend.service.AdminStatsService;
 import com.tepinhui.tepinhui_backend.service.CartService;
 import com.tepinhui.tepinhui_backend.service.MapService;
@@ -20,6 +26,7 @@ import com.tepinhui.tepinhui_backend.vo.cart.CartVO;
 import com.tepinhui.tepinhui_backend.vo.map.SpecialtyMapVO;
 import com.tepinhui.tepinhui_backend.vo.merchant.MerchantStatsVO;
 import com.tepinhui.tepinhui_backend.vo.trace.TracePageVO;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.tepinhui.tepinhui_backend.vo.trace.TraceQueryVO;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -97,6 +104,31 @@ class SecurityAccessMatrixTest {
     @MockitoBean
     private StringRedisTemplate stringRedisTemplate;
 
+    @MockitoBean
+    private MerchantMapper merchantMapper;
+
+    @MockitoBean
+    private UserMapper userMapper;
+
+    /**
+     * 公共 mock 配置：为所有测试预先配置 getCurrentMerchantId() 所需的 mapper 行为。
+     * merchantShouldAccessTraceInputEndpoint 会触发这些 mock。
+     * 其他测试不调用这些路径，mock 不起作用但无副作用。
+     */
+    private void configureMerchantAuthMocks() {
+        User mockUser = new User();
+        mockUser.setId(1L);
+        mockUser.setUsername("merchantUser");
+        mockUser.setRole(Role.MERCHANT);
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(mockUser);
+
+        Merchant mockMerchant = new Merchant();
+        mockMerchant.setId(1L);
+        mockMerchant.setUserId(1L);
+        mockMerchant.setStatus("approved");
+        when(merchantMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(mockMerchant);
+    }
+
     @Test
     void anonymousShouldAccessPublicMapEndpoint() throws Exception {
         when(mapService.listSpecialties()).thenReturn(List.of(new SpecialtyMapVO()));
@@ -160,6 +192,7 @@ class SecurityAccessMatrixTest {
     @Test
     @WithMockUser(roles = "MERCHANT")
     void merchantShouldAccessTraceInputEndpoint() throws Exception {
+        configureMerchantAuthMocks();
         TraceRecord traceRecord = new TraceRecord();
         traceRecord.setId(9L);
         traceRecord.setTraceCode("TP-ZJ-LJ-2024-042138");
@@ -188,7 +221,7 @@ class SecurityAccessMatrixTest {
         statsVO.setMerchantCount(0L);
         statsVO.setProductCount(0L);
         statsVO.setOrderCount(0L);
-        statsVO.setSalesAmount(BigDecimal.ZERO);
+        statsVO.setTotalSalesAmount(BigDecimal.ZERO);
         when(adminStatsService.getAdminStats()).thenReturn(statsVO);
 
         mockMvc.perform(get("/api/v1/admin/stats"))

@@ -1,7 +1,13 @@
 package com.tepinhui.tepinhui_backend.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.tepinhui.tepinhui_backend.exception.BusinessException;
 import com.tepinhui.tepinhui_backend.dto.trace.TraceInputDTO;
+import com.tepinhui.tepinhui_backend.entity.Merchant;
 import com.tepinhui.tepinhui_backend.entity.TraceRecord;
+import com.tepinhui.tepinhui_backend.entity.User;
+import com.tepinhui.tepinhui_backend.mapper.MerchantMapper;
+import com.tepinhui.tepinhui_backend.mapper.UserMapper;
 import com.tepinhui.tepinhui_backend.service.TraceService;
 import com.tepinhui.tepinhui_backend.vo.trace.TracePageVO;
 import com.tepinhui.tepinhui_backend.vo.trace.TraceQueryVO;
@@ -11,6 +17,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,6 +30,8 @@ import org.springframework.web.bind.annotation.*;
 public class TraceController {
 
     private final TraceService traceService;
+    private final MerchantMapper merchantMapper;
+    private final UserMapper userMapper;
 
     /**
      * 商家录入溯源信息
@@ -33,12 +45,50 @@ public class TraceController {
     public Result<TraceRecord> inputTrace(
         @Parameter(description = "溯源录入信息")
         @RequestBody @Valid TraceInputDTO dto
-        // TODO: 从 Security Context 获取 merchantId
-        // @RequestAttribute Long merchantId
     ) {
-        Long merchantId = 1L; // TODO: 替换为实际 merchantId
+        Long merchantId = getCurrentMerchantId();
         TraceRecord record = traceService.inputTrace(dto, merchantId);
         return Result.success(record);
+    }
+
+    /**
+     * 从 SecurityContext 获取当前商家ID
+     */
+    private Long getCurrentMerchantId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new BusinessException(401, "未登录");
+        }
+        String username;
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof String) {
+            username = (String) principal;
+        } else if (principal instanceof UserDetails) {
+            username = ((UserDetails) principal).getUsername();
+        } else {
+            throw new BusinessException(401, "登录状态无效");
+        }
+        if (!StringUtils.hasText(username)) {
+            throw new BusinessException(401, "登录状态无效");
+        }
+        User user = userMapper.selectOne(
+            new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, username)
+                .last("LIMIT 1")
+        );
+        if (user == null) {
+            throw new BusinessException(404, "当前用户不存在");
+        }
+        Merchant merchant = merchantMapper.selectOne(
+            new LambdaQueryWrapper<Merchant>()
+                .eq(Merchant::getUserId, user.getId())
+                .eq(Merchant::getStatus, "approved")
+                .last("LIMIT 1")
+        );
+        if (merchant == null) {
+            throw new BusinessException(403, "您还没有通过商家入驻审核");
+        }
+        return merchant.getId();
     }
 
     /**

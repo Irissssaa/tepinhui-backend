@@ -48,9 +48,12 @@ public class TraceServiceImpl implements TraceService {
 
     @Override
     public TraceRecord inputTrace(TraceInputDTO dto, Long merchantId) {
-        // 1. 校验商品存在
+        // 1. 校验商品存在且属于当前商家
         Product product = productMapper.selectById(dto.getProductId());
         if (product == null) throw new BusinessException(404, "商品不存在");
+        if (!merchantId.equals(product.getMerchantId())) {
+            throw new BusinessException(403, "您无权为该商品录入溯源");
+        }
 
         // 2. 生成溯源码（从商品关联获取省份+品类）
         String traceCode = generateTraceCode(dto.getProductId());
@@ -296,11 +299,23 @@ public class TraceServiceImpl implements TraceService {
         productVO.setCoverImg(coverImg);
         vo.setProduct(productVO);
 
-        // origin 层
+        // origin 层（从 product→specialty→origin 联查真实数据）
         TraceQueryVO.OriginVO originVO = new TraceQueryVO.OriginVO();
-        originVO.setProvince("浙江");
-        originVO.setCity("杭州");
-        originVO.setCounty("西湖区");
+        if (product != null) {
+            Specialty specialty = specialtyMapper.selectById(product.getSpecialtyId());
+            if (specialty != null) {
+                Origin origin = originMapper.selectById(specialty.getOriginId());
+                if (origin != null) {
+                    originVO.setProvince(origin.getProvinceName());
+                    originVO.setCity(origin.getCityName());
+                    originVO.setCounty(origin.getCountyName());
+                }
+            }
+        }
+        // 如果联查失败，用记录中的地址和坐标兜底
+        if (originVO.getProvince() == null) originVO.setProvince("未知");
+        if (originVO.getCity() == null) originVO.setCity("");
+        if (originVO.getCounty() == null) originVO.setCounty("");
         originVO.setAddress(record.getOriginAddress());
         originVO.setLongitude(record.getLongitude());
         originVO.setLatitude(record.getLatitude());
