@@ -25,8 +25,8 @@ public class UserController {
 
     @GetMapping("/profile")
     @Operation(
-        summary = "获取当前用户资料（未实现）",
-        description = "查询当前登录用户的资料信息；当前接口仅保留契约，业务逻辑待实现"
+        summary = "获取当前用户资料",
+        description = "查询当前登录用户的资料信息，包含id/username/nickname/email/phone/avatarUrl/role/status"
     )
     public Result<UserProfileVO> getProfile() {
         return Result.success(userProfileService.getCurrentUserProfile());
@@ -34,8 +34,8 @@ public class UserController {
 
     @PutMapping("/profile")
     @Operation(
-        summary = "更新当前用户资料（未实现）",
-        description = "更新当前登录用户的昵称、头像、邮箱和手机号；当前接口仅保留契约，业务逻辑待实现"
+        summary = "更新当前用户资料",
+        description = "更新当前登录用户的昵称、头像、邮箱和手机号；非null字段才会更新"
     )
     public Result<UserProfileVO> updateProfile(
         @Parameter(description = "用户资料更新请求", required = true)
