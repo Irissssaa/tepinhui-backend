@@ -20,8 +20,8 @@ public class AdminStatsController {
 
     @GetMapping
     @Operation(
-        summary = "平台看板（未实现）",
-        description = "（未实现：当前返回全 0 占位数据）管理员查看平台用户、商家、商品、订单和销售额概览"
+        summary = "平台看板",
+        description = "管理员查看平台用户、商家、商品、订单和销售额概览"
     )
     public Result<AdminStatsVO> getAdminStats() {
         return Result.success(adminStatsService.getAdminStats());

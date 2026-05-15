@@ -139,16 +139,101 @@ public class SpecialtyServiceImpl implements SpecialtyService {
 
     @Override
     public void createSpecialty(SpecialtyCreateRequest request) {
-        throw new BusinessException(501, "新增特产业务逻辑待实现");
+        // 1. 校验产地存在
+        if (request.getOriginId() != null) {
+            Origin origin = originMapper.selectById(request.getOriginId());
+            if (origin == null) {
+                throw new BusinessException(404, "产地不存在");
+            }
+        }
+
+        // 2. 构造特产实体
+        Specialty specialty = new Specialty();
+        specialty.setOriginId(request.getOriginId());
+        specialty.setName(request.getName());
+        specialty.setCategory(request.getCategory());
+        specialty.setSeasonTag(request.getSeasonTag());
+        specialty.setCoverImg(request.getCoverImg());
+        specialty.setCulturalInfo(request.getCulturalInfo());
+        specialty.setIsLanding(request.getIsLanding() != null && request.getIsLanding() ? 1 : 0);
+
+        // 3. 插入数据库
+        specialtyMapper.insert(specialty);
+
+        // 4. 清除相关缓存
+        redisTemplate.delete(SPECIALTY_LIST_CACHE);
+        redisTemplate.delete(SPECIALTY_DETAIL_CACHE + specialty.getId());
     }
 
     @Override
     public void updateSpecialty(Long id, SpecialtyUpdateRequest request) {
-        throw new BusinessException(501, "更新特产业务逻辑待实现");
+        // 1. 查询特产是否存在
+        Specialty specialty = specialtyMapper.selectById(id);
+        if (specialty == null) {
+            throw new BusinessException(404, "特产不存在");
+        }
+
+        // 2. 若传入 originId，校验产地存在
+        if (request.getOriginId() != null) {
+            Origin origin = originMapper.selectById(request.getOriginId());
+            if (origin == null) {
+                throw new BusinessException(404, "产地不存在");
+            }
+            specialty.setOriginId(request.getOriginId());
+        }
+
+        // 3. 逐字段覆盖（非 null 才覆盖）
+        if (request.getName() != null) {
+            specialty.setName(request.getName());
+        }
+        if (request.getCategory() != null) {
+            specialty.setCategory(request.getCategory());
+        }
+        if (request.getSeasonTag() != null) {
+            specialty.setSeasonTag(request.getSeasonTag());
+        }
+        if (request.getCoverImg() != null) {
+            specialty.setCoverImg(request.getCoverImg());
+        }
+        if (request.getCulturalInfo() != null) {
+            specialty.setCulturalInfo(request.getCulturalInfo());
+        }
+        if (request.getIsLanding() != null) {
+            specialty.setIsLanding(request.getIsLanding() ? 1 : 0);
+        }
+
+        // 4. 更新数据库
+        specialtyMapper.updateById(specialty);
+
+        // 5. 清除相关缓存
+        redisTemplate.delete(SPECIALTY_LIST_CACHE);
+        redisTemplate.delete(SPECIALTY_DETAIL_CACHE + id);
     }
 
     @Override
     public void updateSpecialtyStatus(Long id, String status) {
-        throw new BusinessException(501, "更新特产状态业务逻辑待实现");
+        // 1. 查询特产是否存在
+        Specialty specialty = specialtyMapper.selectById(id);
+        if (specialty == null) {
+            throw new BusinessException(404, "特产不存在");
+        }
+
+        // 2. 状态映射
+        Integer isLanding;
+        if ("on".equals(status)) {
+            isLanding = 1;
+        } else if ("off".equals(status)) {
+            isLanding = 0;
+        } else {
+            throw new BusinessException(400, "无效状态，仅支持 on/off");
+        }
+
+        // 3. 更新数据库
+        specialty.setIsLanding(isLanding);
+        specialtyMapper.updateById(specialty);
+
+        // 4. 清除相关缓存
+        redisTemplate.delete(SPECIALTY_LIST_CACHE);
+        redisTemplate.delete(SPECIALTY_DETAIL_CACHE + id);
     }
 }

@@ -33,8 +33,8 @@ public class AdminSpecialtyController {
 
     @PostMapping
     @Operation(
-        summary = "新增特产（未实现）",
-        description = "管理员新增特产基础信息；当前接口仅保留契约，业务逻辑待实现"
+        summary = "新增特产",
+        description = "管理员新增特产基础信息"
     )
     public Result<Void> createSpecialty(
         @Parameter(description = "新增特产请求", required = true)
@@ -46,8 +46,8 @@ public class AdminSpecialtyController {
 
     @PutMapping("/{id}")
     @Operation(
-        summary = "更新特产（未实现）",
-        description = "管理员更新特产基础信息；当前接口仅保留契约，业务逻辑待实现"
+        summary = "更新特产",
+        description = "管理员更新特产基础信息"
     )
     public Result<Void> updateSpecialty(
         @Parameter(description = "特产ID", required = true)
@@ -61,8 +61,8 @@ public class AdminSpecialtyController {
 
     @PutMapping("/{id}/status")
     @Operation(
-        summary = "更新特产状态（未实现）",
-        description = "管理员更新特产上下架状态；当前接口仅保留契约，业务逻辑待实现"
+        summary = "更新特产状态",
+        description = "管理员更新特产上下架状态"
     )
     public Result<Void> updateSpecialtyStatus(
         @Parameter(description = "特产ID", required = true)
@@ -76,8 +76,8 @@ public class AdminSpecialtyController {
 
     @PutMapping("/{id}/culture")
     @Operation(
-        summary = "维护特产文化内容（未实现）",
-        description = "管理员维护特产文化简介和文化内容列表；当前接口仅保留契约，业务逻辑待实现"
+        summary = "维护特产文化内容",
+        description = "管理员维护特产文化简介和文化内容列表"
     )
     public Result<Void> updateSpecialtyCulture(
         @Parameter(description = "特产ID", required = true)
