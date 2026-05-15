@@ -1,10 +1,14 @@
 package com.tepinhui.tepinhui_backend.service;
 
+import com.tepinhui.tepinhui_backend.dto.order.OrderCalculateRequest;
 import com.tepinhui.tepinhui_backend.dto.order.OrderCreateRequest;
+import com.tepinhui.tepinhui_backend.dto.order.OrderPayRequest;
 import com.tepinhui.tepinhui_backend.dto.order.OrderQueryRequest;
 import com.tepinhui.tepinhui_backend.dto.order.OrderShipRequest;
+import com.tepinhui.tepinhui_backend.vo.order.OrderCalculateVO;
 import com.tepinhui.tepinhui_backend.vo.order.OrderDetailVO;
 import com.tepinhui.tepinhui_backend.vo.order.OrderPageVO;
+import com.tepinhui.tepinhui_backend.vo.order.OrderPayVO;
 
 public interface OrderService {
 
@@ -19,4 +23,8 @@ public interface OrderService {
     void confirmOrder(Long id);
 
     void shipOrder(Long id, OrderShipRequest request);
+
+    OrderCalculateVO calculateOrder(OrderCalculateRequest request);
+
+    OrderPayVO payOrder(Long orderId, OrderPayRequest request);
 }
