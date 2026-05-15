@@ -44,6 +44,7 @@ public class MapServiceImpl implements MapService {
     );
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<SpecialtyMapVO> listSpecialties() {
         // 1. 查缓存
         Object cached = redisTemplate.opsForValue().get(SPECIALTY_MAP_CACHE_KEY);
@@ -115,6 +116,7 @@ public class MapServiceImpl implements MapService {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<SeasonRecommendVO> listSeasonRecommendations() {
         // 1. 查缓存
         Object cached = redisTemplate.opsForValue().get(SEASON_RECOMMEND_CACHE_KEY);

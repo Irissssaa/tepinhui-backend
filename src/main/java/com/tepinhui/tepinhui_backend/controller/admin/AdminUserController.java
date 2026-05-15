@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "用户-管理端接口", description = "管理员创建受控账号和调整用户角色接口")
+@Tag(name = "用户-管理端接口", description = "管理员创建受控账号和调整用户角色接口（权限：管理员）")
 @RestController
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
@@ -27,8 +27,8 @@ public class AdminUserController {
 
     @PostMapping
     @Operation(
-        summary = "创建受控账号（未实现）",
-        description = "仅管理员可在受控后台创建 ADMIN/MERCHANT/CONSUMER 账号，不开放普通注册；普通注册仍固定为 CONSUMER；当前接口仅保留契约，业务逻辑待实现"
+        summary = "创建受控账号",
+        description = "仅 ADMIN 可调用，可创建 ADMIN/MERCHANT/CONSUMER 三类账号；不开放普通注册选择角色，普通注册固定为 CONSUMER；密码使用 BCrypt 加密；用户名/手机号必须唯一（冲突返回 409）"
     )
     public Result<AdminUserVO> createUser(
         @Parameter(description = "受控账号创建请求", required = true)
@@ -39,8 +39,8 @@ public class AdminUserController {
 
     @PutMapping("/{id}/role")
     @Operation(
-        summary = "调整用户角色（未实现）",
-        description = "仅管理员可在受控后台调整用户角色，不开放普通注册直接选择角色；商家入驻审核通过时应优先走商家审核流程授予 MERCHANT；当前接口仅保留契约，业务逻辑待实现"
+        summary = "调整用户角色",
+        description = "仅 ADMIN 可调用；商家入驻应优先走 /api/v1/admin/merchant/audit 审核流程；调整非法 id 返回 404"
     )
     public Result<AdminUserVO> updateRole(
         @Parameter(description = "用户ID", required = true)

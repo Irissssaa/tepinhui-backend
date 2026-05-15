@@ -67,7 +67,8 @@ public class SecurityConfig {
                     "/swagger-ui/index.html",
                     "/v3/api-docs/**",
                     "/api-docs/**",
-                    "/swagger-config/**"
+                    "/swagger-config/**",
+                    "/uploads/avatar/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/products").hasAnyRole("MERCHANT", "ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/v1/products", "/api/v1/products/*").permitAll()
