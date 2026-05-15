@@ -11,4 +11,7 @@ public final class Constants {
 
     public static final String REGISTER_CODE_PREFIX = "auth:register:code:";
     public static final String REGISTER_CODE_SEND_LOCK_PREFIX = "auth:register:lock:";
+
+    public static final String PASSWORD_RESET_CODE_PREFIX = "auth:password:code:";
+    public static final String PASSWORD_RESET_CODE_SEND_LOCK_PREFIX = "auth:password:lock:";
 }
