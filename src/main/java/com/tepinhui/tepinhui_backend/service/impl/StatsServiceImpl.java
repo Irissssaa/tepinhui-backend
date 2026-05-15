@@ -69,6 +69,7 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<RegionTraceStatsVO> listTraceStatsByRegion(String region) {
         String cacheKey = TRACE_REGION_CACHE_KEY + (StringUtils.hasText(region) ? ":" + region : "");
         Object cached = redisTemplate.opsForValue().get(cacheKey);
@@ -110,6 +111,7 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<RegionSalesStatsVO> listSalesStatsByRegion(String region) {
         String cacheKey = SALES_REGION_CACHE_KEY + (StringUtils.hasText(region) ? ":" + region : "");
         Object cached = redisTemplate.opsForValue().get(cacheKey);
