@@ -24,8 +24,8 @@ public class AdminProductController {
 
     @PutMapping("/{id}/audit")
     @Operation(
-        summary = "审核商品（未实现）",
-        description = "管理员审核商品上架申请，当前接口仅保留契约，业务逻辑待实现"
+        summary = "审核商品",
+        description = "管理员审核商品上架申请；status=on=审核通过/上架，status=off=审核驳回/下架"
     )
     public Result<Void> auditProduct(
         @Parameter(description = "商品ID", required = true)

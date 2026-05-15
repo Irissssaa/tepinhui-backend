@@ -27,6 +27,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.net.URLEncoder;
@@ -184,8 +185,18 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void auditProduct(Long id, ProductAuditRequest request) {
-        throw new BusinessException(501, "商品审核业务逻辑待实现");
+        // 1. 查商品存在
+        Product product = productMapper.selectById(id);
+        if (product == null) {
+            throw new BusinessException(404, "商品不存在");
+        }
+
+        // 2. 审核结果：on→上架状态，off→下架状态
+        // 商品表 status 字段：已上架="on"，已下架="off"（与管理端审核状态共用同一字段）
+        product.setStatus(request.getStatus());
+        productMapper.updateById(product);
     }
 
     private LambdaQueryWrapper<Product> buildPublicListQuery(ProductQueryRequest request) {
