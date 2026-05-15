@@ -76,6 +76,9 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         // 3. 重新查询返回最新数据
         User updated = userMapper.selectById(id);
+        if (updated == null) {
+            throw new BusinessException(404, "用户不存在");
+        }
         return buildAdminUserVO(updated);
     }
 
