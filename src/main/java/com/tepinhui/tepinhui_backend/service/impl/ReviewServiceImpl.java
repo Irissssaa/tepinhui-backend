@@ -1,6 +1,7 @@
 package com.tepinhui.tepinhui_backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tepinhui.tepinhui_backend.common.OrderStatus;
@@ -16,6 +17,7 @@ import com.tepinhui.tepinhui_backend.mapper.OrdersMapper;
 import com.tepinhui.tepinhui_backend.mapper.ReviewMapper;
 import com.tepinhui.tepinhui_backend.mapper.UserMapper;
 import com.tepinhui.tepinhui_backend.service.ReviewService;
+import com.tepinhui.tepinhui_backend.vo.review.ReviewListVO;
 import com.tepinhui.tepinhui_backend.vo.review.ReviewVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -118,6 +120,21 @@ public class ReviewServiceImpl implements ReviewService {
         vo.setImages(request.getImages());
         vo.setCreatedAt(firstReview.getCreatedAt());
         return vo;
+    }
+
+    @Override
+    public IPage<ReviewListVO> getProductReviews(Long productId, int page, int size) {
+        throw new UnsupportedOperationException("待 T03 实现");
+    }
+
+    @Override
+    public IPage<ReviewListVO> getCurrentUserReviews(int page, int size) {
+        throw new UnsupportedOperationException("待 T04 实现");
+    }
+
+    @Override
+    public void deleteReview(Long reviewId) {
+        throw new UnsupportedOperationException("待 T05 实现");
     }
 
     private User getCurrentUser() {
