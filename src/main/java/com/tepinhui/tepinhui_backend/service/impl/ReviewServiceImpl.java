@@ -156,11 +156,14 @@ public class ReviewServiceImpl implements ReviewService {
             : userMapper.selectBatchIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
-        // 3. 逐条组装 ReviewListVO
-        return reviewPage.convert(review -> toReviewListVO(review, userMap));
+        // 3. 可选获取当前登录用户（公开接口，未登录返回 null，不抛异常）
+        User currentUser = getCurrentUserOrNull();
+
+        // 4. 逐条组装 ReviewListVO
+        return reviewPage.convert(review -> toReviewListVO(review, userMap, currentUser));
     }
 
-    private ReviewListVO toReviewListVO(Review review, Map<Long, User> userMap) {
+    private ReviewListVO toReviewListVO(Review review, Map<Long, User> userMap, User currentUser) {
         ReviewListVO vo = new ReviewListVO();
         vo.setId(review.getId());
         vo.setUserId(review.getUserId());
@@ -184,7 +187,32 @@ public class ReviewServiceImpl implements ReviewService {
 
         // images 在 DB 中为 JSON 字符串，反序列化为 List<String>
         vo.setImages(parseImages(review.getImages()));
+
+        // deletable: 未登录 -> null；管理员 -> true；消费者且为作者 -> true；其他 -> false
+        vo.setDeletable(resolveDeletable(review, currentUser));
         return vo;
+    }
+
+    /**
+     * 判定当前登录用户是否可删除该评价：
+     * - 未登录（currentUser == null） -> 返回 null（前端隐藏删除按钮）
+     * - 管理员 -> true
+     * - 消费者且为评价作者 -> true
+     * - 其他情况 -> false
+     */
+    private Boolean resolveDeletable(Review review, User currentUser) {
+        if (currentUser == null) {
+            return null;
+        }
+        Role role = currentUser.getRole();
+        if (role == Role.ADMIN) {
+            return true;
+        }
+        if (role == Role.CONSUMER && currentUser.getId() != null
+            && currentUser.getId().equals(review.getUserId())) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -240,8 +268,8 @@ public class ReviewServiceImpl implements ReviewService {
         // 3. 当前用户的评价都来自同一用户，构造单元素 Map 复用 toReviewListVO
         Map<Long, User> userMap = Collections.singletonMap(userId, user);
 
-        // 4. 逐条组装 ReviewListVO
-        return reviewPage.convert(review -> toReviewListVO(review, userMap));
+        // 4. 逐条组装 ReviewListVO（当前用户必然存在，deletable 由 resolveDeletable 判定为 true）
+        return reviewPage.convert(review -> toReviewListVO(review, userMap, user));
     }
 
     @Override
@@ -287,6 +315,37 @@ public class ReviewServiceImpl implements ReviewService {
         }
         if (user.getStatus() != null && user.getStatus() == UserStatus.DISABLED) {
             throw new BusinessException(403, "账号已被禁用");
+        }
+        return user;
+    }
+
+    /**
+     * 可选获取当前登录用户，用于公开接口（如 getProductReviews）。
+     * 未登录、匿名访问、用户不存在或被禁用时统一返回 null，不抛异常。
+     * 仅用于需要"可选用户上下文"的场景；强制登录的接口仍应使用 {@link #getCurrentUser()}。
+     */
+    private User getCurrentUserOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+        if (!(authentication.getPrincipal() instanceof String username) || !StringUtils.hasText(username)) {
+            return null;
+        }
+        // Spring Security 匿名访问时 principal 为字符串 "anonymousUser"，需排除
+        if ("anonymousUser".equals(username)) {
+            return null;
+        }
+        User user = userMapper.selectOne(
+            new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, username)
+                .last("LIMIT 1")
+        );
+        if (user == null) {
+            return null;
+        }
+        if (user.getStatus() != null && user.getStatus() == UserStatus.DISABLED) {
+            return null;
         }
         return user;
     }

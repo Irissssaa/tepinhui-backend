@@ -39,4 +39,7 @@ public class ReviewListVO {
 
     @Schema(description = "创建时间")
     private LocalDateTime createdAt;
+
+    @Schema(description = "当前登录用户是否可删除此评价")
+    private Boolean deletable;
 }
