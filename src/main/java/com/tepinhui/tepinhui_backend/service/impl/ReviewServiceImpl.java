@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tepinhui.tepinhui_backend.common.OrderStatus;
+import com.tepinhui.tepinhui_backend.common.Role;
 import com.tepinhui.tepinhui_backend.common.UserStatus;
 import com.tepinhui.tepinhui_backend.dto.review.ReviewCreateRequest;
 import com.tepinhui.tepinhui_backend.entity.OrderItem;
@@ -245,7 +246,26 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public void deleteReview(Long reviewId) {
-        throw new UnsupportedOperationException("待 T05 实现");
+        // 1. 查询评价（不存在 -> 404）
+        Review review = reviewMapper.selectById(reviewId);
+        if (review == null) {
+            throw new BusinessException(404, "评价不存在");
+        }
+
+        // 2. 获取当前登录用户
+        User currentUser = getCurrentUser();
+
+        // 3. 权限校验：管理员可删除任意评价；消费者仅可删除自己的评价；其他角色禁止
+        Role role = currentUser.getRole();
+        boolean isAdmin = role == Role.ADMIN;
+        boolean isOwner = role == Role.CONSUMER && currentUser.getId().equals(review.getUserId());
+        if (!isAdmin && !isOwner) {
+            throw new BusinessException(403, "无权删除该评价");
+        }
+
+        // 4. 物理删除
+        reviewMapper.deleteById(reviewId);
+        log.info("评价删除成功 reviewId={} operator={}", reviewId, currentUser.getId());
     }
 
     private User getCurrentUser() {
