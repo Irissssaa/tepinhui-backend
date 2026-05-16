@@ -218,7 +218,29 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public IPage<ReviewListVO> getCurrentUserReviews(int page, int size) {
-        throw new UnsupportedOperationException("待 T04 实现");
+        // 1. 获取当前登录用户
+        User user = getCurrentUser();
+        Long userId = user.getId();
+
+        // 2. 分页查询当前用户的评价（按创建时间倒序）
+        Page<Review> reviewPage = reviewMapper.selectPage(
+            new Page<>(page, size),
+            new LambdaQueryWrapper<Review>()
+                .eq(Review::getUserId, userId)
+                .orderByDesc(Review::getCreatedAt)
+        );
+
+        List<Review> reviews = reviewPage.getRecords();
+        if (reviews == null || reviews.isEmpty()) {
+            // 无数据时直接 convert 返回空 IPage（records 为空、total=0）
+            return reviewPage.convert(r -> new ReviewListVO());
+        }
+
+        // 3. 当前用户的评价都来自同一用户，构造单元素 Map 复用 toReviewListVO
+        Map<Long, User> userMap = Collections.singletonMap(userId, user);
+
+        // 4. 逐条组装 ReviewListVO
+        return reviewPage.convert(review -> toReviewListVO(review, userMap));
     }
 
     @Override
