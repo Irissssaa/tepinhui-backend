@@ -2,7 +2,9 @@ package com.tepinhui.tepinhui_backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tepinhui.tepinhui_backend.common.OrderStatus;
 import com.tepinhui.tepinhui_backend.common.UserStatus;
@@ -27,7 +29,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -124,7 +131,89 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public IPage<ReviewListVO> getProductReviews(Long productId, int page, int size) {
-        throw new UnsupportedOperationException("待 T03 实现");
+        // 1. 分页查询商品评价（按创建时间倒序）
+        Page<Review> reviewPage = reviewMapper.selectPage(
+            new Page<>(page, size),
+            new LambdaQueryWrapper<Review>()
+                .eq(Review::getProductId, productId)
+                .orderByDesc(Review::getCreatedAt)
+        );
+
+        List<Review> reviews = reviewPage.getRecords();
+        if (reviews == null || reviews.isEmpty()) {
+            // 无数据时直接 convert 返回空 IPage（records 为空、total=0）
+            return reviewPage.convert(r -> new ReviewListVO());
+        }
+
+        // 2. 批量查询用户信息，避免 N+1
+        Set<Long> userIds = reviews.stream()
+            .map(Review::getUserId)
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
+        Map<Long, User> userMap = userIds.isEmpty()
+            ? Collections.emptyMap()
+            : userMapper.selectBatchIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        // 3. 逐条组装 ReviewListVO
+        return reviewPage.convert(review -> toReviewListVO(review, userMap));
+    }
+
+    private ReviewListVO toReviewListVO(Review review, Map<Long, User> userMap) {
+        ReviewListVO vo = new ReviewListVO();
+        vo.setId(review.getId());
+        vo.setUserId(review.getUserId());
+        vo.setProductId(review.getProductId());
+        vo.setOrderId(review.getOrderId());
+        vo.setRating(review.getRating());
+        vo.setContent(review.getContent());
+        vo.setCreatedAt(review.getCreatedAt());
+
+        // 用户信息：优先使用昵称，缺失时回退用户名，再做脱敏
+        User user = review.getUserId() == null ? null : userMap.get(review.getUserId());
+        if (user != null) {
+            String displayName = StringUtils.hasText(user.getNickname())
+                ? user.getNickname()
+                : user.getUsername();
+            vo.setUsername(maskUsername(displayName));
+            vo.setAvatarUrl(user.getAvatarUrl());
+        } else {
+            vo.setUsername("");
+        }
+
+        // images 在 DB 中为 JSON 字符串，反序列化为 List<String>
+        vo.setImages(parseImages(review.getImages()));
+        return vo;
+    }
+
+    /**
+     * 用户名脱敏：保留首字符 + 三个 *；长度 ≤ 1 原样返回；空值返回空字符串。
+     */
+    private String maskUsername(String name) {
+        if (!StringUtils.hasText(name)) {
+            return "";
+        }
+        if (name.length() <= 1) {
+            return name;
+        }
+        return name.charAt(0) + "***";
+    }
+
+    /**
+     * 将存储在 review.images 中的 JSON 字符串反序列化为 List<String>。
+     * 解析失败或为空时返回空列表，不阻断列表查询。
+     */
+    private List<String> parseImages(String imagesJson) {
+        if (!StringUtils.hasText(imagesJson)) {
+            return Collections.emptyList();
+        }
+        try {
+            List<String> images = objectMapper.readValue(imagesJson, new TypeReference<List<String>>() {});
+            return images == null ? Collections.emptyList() : images;
+        } catch (JsonProcessingException e) {
+            log.warn("评价图片反序列化失败，已降级为空列表: imagesJson={}", imagesJson, e);
+            return Collections.emptyList();
+        }
     }
 
     @Override
