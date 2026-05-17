@@ -1,9 +1,13 @@
 package com.tepinhui.tepinhui_backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tepinhui.tepinhui_backend.common.OrderStatus;
+import com.tepinhui.tepinhui_backend.common.Role;
 import com.tepinhui.tepinhui_backend.common.UserStatus;
 import com.tepinhui.tepinhui_backend.dto.review.ReviewCreateRequest;
 import com.tepinhui.tepinhui_backend.entity.OrderItem;
@@ -16,6 +20,7 @@ import com.tepinhui.tepinhui_backend.mapper.OrdersMapper;
 import com.tepinhui.tepinhui_backend.mapper.ReviewMapper;
 import com.tepinhui.tepinhui_backend.mapper.UserMapper;
 import com.tepinhui.tepinhui_backend.service.ReviewService;
+import com.tepinhui.tepinhui_backend.vo.review.ReviewListVO;
 import com.tepinhui.tepinhui_backend.vo.review.ReviewVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +30,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -120,6 +130,172 @@ public class ReviewServiceImpl implements ReviewService {
         return vo;
     }
 
+    @Override
+    public IPage<ReviewListVO> getProductReviews(Long productId, int page, int size) {
+        // 1. 分页查询商品评价（按创建时间倒序）
+        Page<Review> reviewPage = reviewMapper.selectPage(
+            new Page<>(page, size),
+            new LambdaQueryWrapper<Review>()
+                .eq(Review::getProductId, productId)
+                .orderByDesc(Review::getCreatedAt)
+        );
+
+        List<Review> reviews = reviewPage.getRecords();
+        if (reviews == null || reviews.isEmpty()) {
+            // 无数据时直接 convert 返回空 IPage（records 为空、total=0）
+            return reviewPage.convert(r -> new ReviewListVO());
+        }
+
+        // 2. 批量查询用户信息，避免 N+1
+        Set<Long> userIds = reviews.stream()
+            .map(Review::getUserId)
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
+        Map<Long, User> userMap = userIds.isEmpty()
+            ? Collections.emptyMap()
+            : userMapper.selectBatchIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        // 3. 可选获取当前登录用户（公开接口，未登录返回 null，不抛异常）
+        User currentUser = getCurrentUserOrNull();
+
+        // 4. 逐条组装 ReviewListVO
+        return reviewPage.convert(review -> toReviewListVO(review, userMap, currentUser));
+    }
+
+    private ReviewListVO toReviewListVO(Review review, Map<Long, User> userMap, User currentUser) {
+        ReviewListVO vo = new ReviewListVO();
+        vo.setId(review.getId());
+        vo.setUserId(review.getUserId());
+        vo.setProductId(review.getProductId());
+        vo.setOrderId(review.getOrderId());
+        vo.setRating(review.getRating());
+        vo.setContent(review.getContent());
+        vo.setCreatedAt(review.getCreatedAt());
+
+        // 用户信息：优先使用昵称，缺失时回退用户名，再做脱敏
+        User user = review.getUserId() == null ? null : userMap.get(review.getUserId());
+        if (user != null) {
+            String displayName = StringUtils.hasText(user.getNickname())
+                ? user.getNickname()
+                : user.getUsername();
+            vo.setUsername(maskUsername(displayName));
+            vo.setAvatarUrl(user.getAvatarUrl());
+        } else {
+            vo.setUsername("");
+        }
+
+        // images 在 DB 中为 JSON 字符串，反序列化为 List<String>
+        vo.setImages(parseImages(review.getImages()));
+
+        // deletable: 未登录 -> null；管理员 -> true；消费者且为作者 -> true；其他 -> false
+        vo.setDeletable(resolveDeletable(review, currentUser));
+        return vo;
+    }
+
+    /**
+     * 判定当前登录用户是否可删除该评价：
+     * - 未登录（currentUser == null） -> 返回 null（前端隐藏删除按钮）
+     * - 管理员 -> true
+     * - 消费者且为评价作者 -> true
+     * - 其他情况 -> false
+     */
+    private Boolean resolveDeletable(Review review, User currentUser) {
+        if (currentUser == null) {
+            return null;
+        }
+        Role role = currentUser.getRole();
+        if (role == Role.ADMIN) {
+            return true;
+        }
+        if (role == Role.CONSUMER && currentUser.getId() != null
+            && currentUser.getId().equals(review.getUserId())) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 用户名脱敏：保留首字符 + 三个 *；长度 ≤ 1 原样返回；空值返回空字符串。
+     */
+    private String maskUsername(String name) {
+        if (!StringUtils.hasText(name)) {
+            return "";
+        }
+        if (name.length() <= 1) {
+            return name;
+        }
+        return name.charAt(0) + "***";
+    }
+
+    /**
+     * 将存储在 review.images 中的 JSON 字符串反序列化为 List<String>。
+     * 解析失败或为空时返回空列表，不阻断列表查询。
+     */
+    private List<String> parseImages(String imagesJson) {
+        if (!StringUtils.hasText(imagesJson)) {
+            return Collections.emptyList();
+        }
+        try {
+            List<String> images = objectMapper.readValue(imagesJson, new TypeReference<List<String>>() {});
+            return images == null ? Collections.emptyList() : images;
+        } catch (JsonProcessingException e) {
+            log.warn("评价图片反序列化失败，已降级为空列表: imagesJson={}", imagesJson, e);
+            return Collections.emptyList();
+        }
+    }
+
+    @Override
+    public IPage<ReviewListVO> getCurrentUserReviews(int page, int size) {
+        // 1. 获取当前登录用户
+        User user = getCurrentUser();
+        Long userId = user.getId();
+
+        // 2. 分页查询当前用户的评价（按创建时间倒序）
+        Page<Review> reviewPage = reviewMapper.selectPage(
+            new Page<>(page, size),
+            new LambdaQueryWrapper<Review>()
+                .eq(Review::getUserId, userId)
+                .orderByDesc(Review::getCreatedAt)
+        );
+
+        List<Review> reviews = reviewPage.getRecords();
+        if (reviews == null || reviews.isEmpty()) {
+            // 无数据时直接 convert 返回空 IPage（records 为空、total=0）
+            return reviewPage.convert(r -> new ReviewListVO());
+        }
+
+        // 3. 当前用户的评价都来自同一用户，构造单元素 Map 复用 toReviewListVO
+        Map<Long, User> userMap = Collections.singletonMap(userId, user);
+
+        // 4. 逐条组装 ReviewListVO（当前用户必然存在，deletable 由 resolveDeletable 判定为 true）
+        return reviewPage.convert(review -> toReviewListVO(review, userMap, user));
+    }
+
+    @Override
+    public void deleteReview(Long reviewId) {
+        // 1. 查询评价（不存在 -> 404）
+        Review review = reviewMapper.selectById(reviewId);
+        if (review == null) {
+            throw new BusinessException(404, "评价不存在");
+        }
+
+        // 2. 获取当前登录用户
+        User currentUser = getCurrentUser();
+
+        // 3. 权限校验：管理员可删除任意评价；消费者仅可删除自己的评价；其他角色禁止
+        Role role = currentUser.getRole();
+        boolean isAdmin = role == Role.ADMIN;
+        boolean isOwner = role == Role.CONSUMER && currentUser.getId().equals(review.getUserId());
+        if (!isAdmin && !isOwner) {
+            throw new BusinessException(403, "无权删除该评价");
+        }
+
+        // 4. 物理删除
+        reviewMapper.deleteById(reviewId);
+        log.info("评价删除成功 reviewId={} operator={}", reviewId, currentUser.getId());
+    }
+
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -139,6 +315,37 @@ public class ReviewServiceImpl implements ReviewService {
         }
         if (user.getStatus() != null && user.getStatus() == UserStatus.DISABLED) {
             throw new BusinessException(403, "账号已被禁用");
+        }
+        return user;
+    }
+
+    /**
+     * 可选获取当前登录用户，用于公开接口（如 getProductReviews）。
+     * 未登录、匿名访问、用户不存在或被禁用时统一返回 null，不抛异常。
+     * 仅用于需要"可选用户上下文"的场景；强制登录的接口仍应使用 {@link #getCurrentUser()}。
+     */
+    private User getCurrentUserOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+        if (!(authentication.getPrincipal() instanceof String username) || !StringUtils.hasText(username)) {
+            return null;
+        }
+        // Spring Security 匿名访问时 principal 为字符串 "anonymousUser"，需排除
+        if ("anonymousUser".equals(username)) {
+            return null;
+        }
+        User user = userMapper.selectOne(
+            new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, username)
+                .last("LIMIT 1")
+        );
+        if (user == null) {
+            return null;
+        }
+        if (user.getStatus() != null && user.getStatus() == UserStatus.DISABLED) {
+            return null;
         }
         return user;
     }
