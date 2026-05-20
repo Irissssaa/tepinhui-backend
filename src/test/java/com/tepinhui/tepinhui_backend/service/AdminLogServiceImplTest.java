@@ -4,6 +4,7 @@ import com.tepinhui.tepinhui_backend.dto.admin.AdminLogQueryRequest;
 import com.tepinhui.tepinhui_backend.exception.BusinessException;
 import com.tepinhui.tepinhui_backend.service.impl.AdminLogServiceImpl;
 import com.tepinhui.tepinhui_backend.vo.admin.AdminLogPageVO;
+import com.tepinhui.tepinhui_backend.vo.admin.AdminLogRecordVO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
@@ -17,6 +18,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -134,7 +137,7 @@ class AdminLogServiceImplTest {
     }
 
     @Test
-    void getLogs_ignoresStackTraceContinuationLines() throws IOException {
+    void getLogs_capturesStackTraceLines() throws IOException {
         Path logFile = writeLogFile("stack-trace.log", """
             2026-05-15 10:00:00.000 | ERROR | [main] | c.t.TestService | request failed
             java.lang.IllegalStateException: boom
@@ -149,9 +152,84 @@ class AdminLogServiceImplTest {
 
         assertEquals(2, page.getReturnedCount());
         assertEquals(List.of("recovered", "request failed"),
-            page.getRecords().stream().map(record -> record.getMessage()).toList());
-        assertTrue(page.getRecords().stream().noneMatch(record -> record.getRawLine().contains("Caused by:")));
-        assertTrue(page.getRecords().stream().noneMatch(record -> record.getMessage().contains("IllegalStateException")));
+            page.getRecords().stream().map(AdminLogRecordVO::getMessage).toList());
+
+        // "recovered" has no stack trace
+        assertNull(page.getRecords().get(0).getStackTrace());
+
+        // "request failed" has full stack trace
+        AdminLogRecordVO failed = page.getRecords().get(1);
+        assertNotNull(failed.getStackTrace());
+        assertTrue(failed.getStackTrace().contains("java.lang.IllegalStateException: boom"));
+        assertTrue(failed.getStackTrace().contains("at c.t.TestService.run(TestService.java:10)"));
+        assertTrue(failed.getStackTrace().contains("Caused by: java.lang.IllegalArgumentException: invalid"));
+        assertTrue(failed.getStackTrace().contains("at c.t.TestService.parse(TestService.java:24)"));
+    }
+
+    @Test
+    void getLogs_keywordMatchesInsideStackTrace() throws IOException {
+        Path logFile = writeLogFile("keyword-stack.log", """
+            2026-05-15 10:00:00.000 | ERROR | [main] | c.t.TestService | request failed
+            java.lang.NullPointerException: null
+                at com.tepinhui.service.ProductServiceImpl.getProduct(ProductServiceImpl.java:42)
+            2026-05-15 10:01:00.000 | INFO  | [main] | c.t.TestService | all good
+            """);
+        AdminLogServiceImpl service = new AdminLogServiceImpl(logFile.toString(), 10, 20);
+
+        AdminLogQueryRequest request = new AdminLogQueryRequest();
+        request.setKeyword("NullPointerException");
+
+        AdminLogPageVO page = service.getLogs(request);
+
+        assertEquals(1, page.getReturnedCount());
+        assertEquals("request failed", page.getRecords().get(0).getMessage());
+    }
+
+    @Test
+    void getLogs_multipleErrorsWithSeparateStackTraces() throws IOException {
+        Path logFile = writeLogFile("multi-stack.log", """
+            2026-05-15 10:00:00.000 | ERROR | [main] | c.t.TestService | first error
+            java.lang.IllegalStateException: first
+                at c.t.TestService.method1(TestService.java:10)
+            2026-05-15 10:01:00.000 | ERROR | [main] | c.t.TestService | second error
+            java.lang.NullPointerException: second
+                at c.t.TestService.method2(TestService.java:20)
+            """);
+        AdminLogServiceImpl service = new AdminLogServiceImpl(logFile.toString(), 10, 20);
+
+        AdminLogPageVO page = service.getLogs(new AdminLogQueryRequest());
+
+        assertEquals(2, page.getReturnedCount());
+
+        AdminLogRecordVO second = page.getRecords().get(0);
+        assertEquals("second error", second.getMessage());
+        assertNotNull(second.getStackTrace());
+        assertTrue(second.getStackTrace().contains("NullPointerException: second"));
+        assertTrue(second.getStackTrace().contains("at c.t.TestService.method2"));
+
+        AdminLogRecordVO first = page.getRecords().get(1);
+        assertEquals("first error", first.getMessage());
+        assertNotNull(first.getStackTrace());
+        assertTrue(first.getStackTrace().contains("IllegalStateException: first"));
+        assertTrue(first.getStackTrace().contains("at c.t.TestService.method1"));
+    }
+
+    @Test
+    void getLogs_noOrphanStackAtFileStart() throws IOException {
+        Path logFile = writeLogFile("no-orphan.log", """
+            2026-05-15 10:00:00.000 | ERROR | [main] | c.t.TestService | failed
+            java.lang.RuntimeException: boom
+                at c.t.TestService.run(TestService.java:5)
+            """);
+        AdminLogServiceImpl service = new AdminLogServiceImpl(logFile.toString(), 10, 20);
+
+        AdminLogPageVO page = service.getLogs(new AdminLogQueryRequest());
+
+        assertEquals(1, page.getReturnedCount());
+        AdminLogRecordVO record = page.getRecords().get(0);
+        assertEquals("failed", record.getMessage());
+        assertNotNull(record.getStackTrace());
+        assertTrue(record.getStackTrace().contains("java.lang.RuntimeException: boom"));
     }
 
     private Path writeLogFile(String fileName, String content) throws IOException {

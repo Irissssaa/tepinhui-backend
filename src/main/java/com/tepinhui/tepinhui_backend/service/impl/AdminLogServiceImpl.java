@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -131,11 +132,12 @@ public class AdminLogServiceImpl implements AdminLogService {
             }
 
             ByteArrayOutputStream reversedLineBuffer = new ByteArrayOutputStream(256);
+            List<String> pendingTraceLines = new ArrayList<>();
             while (pointer >= 0 && records.size() < query.limit()) {
                 randomAccessFile.seek(pointer);
                 int currentByte = randomAccessFile.read();
                 if (currentByte == '\n') {
-                    appendIfMatched(reversedLineBuffer, records, query);
+                    processLine(reversedLineBuffer, records, pendingTraceLines, query);
                     reversedLineBuffer.reset();
                 } else if (currentByte != '\r') {
                     reversedLineBuffer.write(currentByte);
@@ -143,7 +145,7 @@ public class AdminLogServiceImpl implements AdminLogService {
                 pointer--;
             }
 
-            appendIfMatched(reversedLineBuffer, records, query);
+            processLine(reversedLineBuffer, records, pendingTraceLines, query);
             return records;
         } catch (FileNotFoundException e) {
             throw new BusinessException(INTERNAL_ERROR_CODE, "日志文件不存在或无读取权限");
@@ -155,10 +157,11 @@ public class AdminLogServiceImpl implements AdminLogService {
         }
     }
 
-    private void appendIfMatched(ByteArrayOutputStream reversedLineBuffer,
-                                 List<AdminLogRecordVO> records,
-                                 NormalizedQuery query) {
-        if (reversedLineBuffer.size() == 0 || records.size() >= query.limit()) {
+    private void processLine(ByteArrayOutputStream reversedLineBuffer,
+                             List<AdminLogRecordVO> records,
+                             List<String> pendingTraceLines,
+                             NormalizedQuery query) {
+        if (reversedLineBuffer.size() == 0) {
             return;
         }
 
@@ -172,10 +175,17 @@ public class AdminLogServiceImpl implements AdminLogService {
             if (TIMESTAMP_PREFIX_PATTERN.matcher(rawLine).matches()) {
                 throw new BusinessException(INTERNAL_ERROR_CODE, "日志文件格式异常，存在无法解析的日志主行");
             }
+            // 非主行、非时间戳行 → 堆栈跟踪行，累积到缓冲区
+            pendingTraceLines.add(rawLine);
             return;
         }
 
+        // 将待定堆栈附加到当前记录（如果有的话）
         AdminLogRecordVO record = toRecord(matcher, rawLine);
+        if (!pendingTraceLines.isEmpty()) {
+            record.setStackTrace(joinReversedLines(pendingTraceLines));
+            pendingTraceLines.clear();
+        }
         if (matchesFilters(record, query)) {
             records.add(record);
         }
@@ -189,6 +199,12 @@ public class AdminLogServiceImpl implements AdminLogService {
             bytes[right] = temp;
         }
         return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    private String joinReversedLines(List<String> lines) {
+        // 反向读取时行是自底向上累积的，反转以恢复自顶向下顺序
+        Collections.reverse(lines);
+        return String.join("\n", lines);
     }
 
     private AdminLogRecordVO toRecord(Matcher matcher, String rawLine) {
@@ -215,7 +231,13 @@ public class AdminLogServiceImpl implements AdminLogService {
         if (query.level() != null && !query.level().equals(record.getLevel())) {
             return false;
         }
-        return query.keyword() == null || record.getMessage().contains(query.keyword());
+        if (query.keyword() == null) {
+            return true;
+        }
+        if (record.getMessage().contains(query.keyword())) {
+            return true;
+        }
+        return record.getStackTrace() != null && record.getStackTrace().contains(query.keyword());
     }
 
     private AdminLogAppliedFiltersVO toAppliedFilters(NormalizedQuery query) {
