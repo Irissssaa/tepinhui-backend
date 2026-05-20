@@ -182,10 +182,19 @@ def build_html_report(result: dict[str, Any]) -> str:
             "<tr class='log-row'"
             f" data-level='{esc(str(record.get('level') or '').upper())}'"
             f" data-timestamp='{esc(record.get('timestamp'))}'"
-            f" data-message='{esc(record.get('message'))}'>"
+            f" data-message='{esc(record.get('message'))}'"
+            f" data-stacktrace='{esc(record.get('stackTrace'))}'>"
             f"<td>{esc(record.get('timestamp'))}</td>"
             f"<td><span class='badge {level_class(record.get('level'))}'>{esc(record.get('level'))}</span></td>"
             f"<td class='message'>{esc(record.get('message'))}</td>"
+            f"<td class='stacktrace-cell'>"
+            + (
+                f"<details class='stacktrace-toggle'>"
+                f"<summary>查看堆栈 ({len(record.get('stackTrace', '').split(chr(10)))} 行)</summary>"
+                f"<pre class='stacktrace-content'>{esc(record.get('stackTrace'))}</pre>"
+                f"</details>"
+            if record.get('stackTrace') else "<span class='no-stacktrace'>-</span>")
+            + "</td>"
             "</tr>"
         )
         for record in records
@@ -193,7 +202,7 @@ def build_html_report(result: dict[str, Any]) -> str:
 
     if not record_rows:
         record_rows = (
-            "<tr><td colspan='4' class='empty'>没有匹配到日志记录</td></tr>"
+            "<tr><td colspan='5' class='empty'>没有匹配到日志记录</td></tr>"
         )
 
     return f"""<!DOCTYPE html>
@@ -305,6 +314,36 @@ def build_html_report(result: dict[str, Any]) -> str:
       color: var(--muted);
       text-align: center;
       padding: 32px 12px;
+    }}
+    .stacktrace-cell {{
+      max-width: 400px;
+    }}
+    .stacktrace-toggle {{
+      cursor: pointer;
+    }}
+    .stacktrace-toggle summary {{
+      color: var(--error);
+      font-weight: 600;
+      font-size: 13px;
+      padding: 4px 0;
+    }}
+    .stacktrace-content {{
+      background: #1f2937;
+      color: #f0fdf4;
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-top: 8px;
+    }}
+    .no-stacktrace {{
+      color: var(--muted);
+      font-style: italic;
     }}
     .summary {{
       display: flex;
@@ -420,7 +459,7 @@ def build_html_report(result: dict[str, Any]) -> str:
           </div>
           <div class="field">
             <label for="client-keyword">页面内关键字过滤</label>
-            <input id="client-keyword" type="text" placeholder="按消息内容再次筛选">
+            <input id="client-keyword" type="text" placeholder="按消息内容或堆栈跟踪筛选">
           </div>
           <div class="field">
             <label for="client-time">页面内时间包含</label>
@@ -437,6 +476,7 @@ def build_html_report(result: dict[str, Any]) -> str:
               <th>时间</th>
               <th>等级</th>
               <th>消息</th>
+              <th>堆栈跟踪</th>
             </tr>
           </thead>
           <tbody id="log-table-body">
@@ -469,7 +509,7 @@ def build_html_report(result: dict[str, Any]) -> str:
           const rowTimestamp = normalize(row.dataset.timestamp);
 
           const matchesLevel = !level || rowLevel === level;
-          const matchesKeyword = !keyword || rowMessage.includes(keyword);
+          const matchesKeyword = !keyword || rowMessage.includes(keyword) || normalize(row.dataset.stacktrace).includes(keyword);
           const matchesTime = !timeText || rowTimestamp.includes(timeText);
           const visible = matchesLevel && matchesKeyword && matchesTime;
 
